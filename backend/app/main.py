@@ -5,6 +5,8 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from backend.app.agents.cache import JsonCache
+from backend.app.agents.investigator import Investigator, build_investigator
 from backend.app.config import get_settings
 from backend.app.db import connect, ensure_seeded
 from backend.app.pipeline import CaseRun, free_text_fields, load_case, run_case
@@ -33,14 +35,30 @@ DEMO_ORDER = "ABDCEFGHT"
 
 _runs: dict[str, CaseRun] = {}
 _db_lock = threading.Lock()
+_cache: JsonCache | None = None
 _guard: Guard | None = None
+_investigator: Investigator | None = None
+
+
+def get_cache() -> JsonCache:
+    global _cache
+    if _cache is None:
+        _cache = JsonCache(settings.cache_file)
+    return _cache
 
 
 def get_guard() -> Guard:
     global _guard
     if _guard is None:
-        _guard = build_guard(settings)
+        _guard = build_guard(settings, get_cache())
     return _guard
+
+
+def get_investigator() -> Investigator:
+    global _investigator
+    if _investigator is None:
+        _investigator = build_investigator(settings, get_cache())
+    return _investigator
 
 
 def get_conn():
@@ -109,9 +127,10 @@ def _load(conn, alert_id: str) -> tuple[dict, dict]:
 
 @app.get("/health")
 def health() -> dict:
-    guard = get_guard()
+    guard, inv = get_guard(), get_investigator()
     return {"status": "ok", "demo_mode": settings.demo_mode, "guard_model": settings.groq_model_guard or None,
-            "guard_live": guard.backend is not None, "cache_entries": len(guard.cache),
+            "guard_live": guard.backend is not None, "investigator_model": settings.groq_model_main or None,
+            "investigator_live": inv.backend is not None, "cache_entries": len(guard.cache),
             "threshold_aed": settings.aed_block_threshold}
 
 
@@ -140,7 +159,7 @@ def get_case(alert_id: str, conn=Depends(get_conn)):
 def run(alert_id: str, conn=Depends(get_conn)):
     _load(conn, alert_id)
     with _db_lock:
-        result = run_case(conn, alert_id, get_guard(), settings.aed_block_threshold)
+        result = run_case(conn, alert_id, get_guard(), settings.aed_block_threshold, get_investigator())
     _runs[alert_id] = result
     return result
 

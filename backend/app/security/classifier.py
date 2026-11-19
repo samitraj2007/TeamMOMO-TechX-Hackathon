@@ -117,6 +117,7 @@ class Guard:
                             cached=False)
 
 
-def build_guard(settings: Settings, **backend_opts) -> Guard:
+def build_guard(settings: Settings, cache: JsonCache | None = None, **backend_opts) -> Guard:
+    """Pass the same `cache` to every agent: separate JsonCache instances on one file overwrite each other."""
     backend = GroqGuardBackend(settings, **backend_opts) if settings.groq_api_key and settings.groq_model_guard else None
-    return Guard(settings, JsonCache(settings.cache_file), backend)
+    return Guard(settings, cache or JsonCache(settings.cache_file), backend)

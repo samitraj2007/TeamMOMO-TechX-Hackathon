@@ -133,19 +133,61 @@ export interface Resolution {
   ts: string;
 }
 
+export interface EvidenceRecord {
+  record_id: string;
+  kind: "TRANSACTION" | "CUSTOMER" | "DEVICE" | "WATCHLIST_MATCH" | "VELOCITY";
+  facts: Record<string, string | number | boolean | null>;
+}
+
+export interface InvestigatorInput {
+  case_id: string;
+  memo_facts: MemoFacts;
+  evidence: EvidenceRecord[];
+  policy: {
+    threshold_aed: number;
+    code_route: Route;
+    code_reasons: string[];
+    classifier_status: "ok" | "degraded";
+    evidence_complete: boolean;
+  };
+}
+
+export interface Finding {
+  code: string;
+  record_ids: string[];
+  note: string;
+}
+
+export interface InvestigatorResult {
+  status:
+    | "ok"
+    | "citation_invalid"
+    | "timeout"
+    | "rate_limited"
+    | "invalid_output"
+    | "unavailable"
+    | "cache_miss"
+    | "not_configured"
+    | "prompt_too_large";
+  output: { findings: Finding[]; recommendation: "CLEAR" | "REVIEW" | "BLOCK"; confidence: number } | null;
+  model: string;
+  prompt_version: string;
+  cached: boolean;
+  duration_ms: number;
+  prompt_chars: number;
+  usage: { prompt_tokens: number; completion_tokens: number; reasoning_tokens: number; total_tokens: number } | null;
+  invalid_citations: string[];
+}
+
 export interface CaseRun {
   alert_id: string;
   txn_id: string;
   steps: Step[];
   quarantine: QuarantineResult;
   evidence: Evidence;
-  investigator_input: {
-    memo_facts: MemoFacts;
-    amount_aed: number;
-    evidence_record_ids: string[];
-    watchlist_band: string;
-    device_known_and_verified: boolean | null;
-  };
+  investigator_input: InvestigatorInput;
+  investigator: InvestigatorResult;
+  code_route: Route;
   decision: { route: Route; reasons: Reason[]; threshold_aed: number };
   resolution: Resolution | null;
   gate: Gate;

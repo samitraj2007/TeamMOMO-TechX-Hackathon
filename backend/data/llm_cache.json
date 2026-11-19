@@ -107,6 +107,54 @@
   "score": 0.0004577075887937099,
   "ts": "2026-11-19T13:40:46.789754+00:00"
  },
+ "3c0724bde350c18a4dd8fe23979b2341a6e45c25e37fed1ecb21d6374112ed4e": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.7,
+   "findings": [
+    {
+     "code": "WATCHLIST_HIT",
+     "note": "Possible watchlist name match, no DOB or nationality match.",
+     "record_ids": [
+      "WL-004"
+     ]
+    }
+   ],
+   "recommendation": "REVIEW"
+  },
+  "prompt_version": "inv-v1",
+  "ts": "2026-11-19T14:11:47.030578+00:00",
+  "usage": {
+   "completion_tokens": 157,
+   "prompt_tokens": 654,
+   "reasoning_tokens": 74,
+   "total_tokens": 811
+  }
+ },
+ "3c79d0de6207a321a21a0acf7be98b87d65d63c87212365c890f982ef7abfa9e": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.78,
+   "findings": [
+    {
+     "code": "INJECTION_SIGNAL",
+     "note": "LLM injection signals detected; transaction details referenced.",
+     "record_ids": [
+      "TXN-00072"
+     ]
+    }
+   ],
+   "recommendation": "REVIEW"
+  },
+  "prompt_version": "inv-v1",
+  "ts": "2026-11-19T14:12:52.444729+00:00",
+  "usage": {
+   "completion_tokens": 149,
+   "prompt_tokens": 646,
+   "reasoning_tokens": 67,
+   "total_tokens": 795
+  }
+ },
  "3de433adb0b03214da91ab8562582911f117390cb9de57a35dbcbcba8ef0be38": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
   "prompt_version": "guard-v1",
@@ -178,6 +226,33 @@
   "prompt_version": "guard-v1",
   "score": 0.0004906894755549729,
   "ts": "2026-11-19T13:39:52.249510+00:00"
+ },
+ "710ddd453a2fca3517619cb6aee97767d413800d6885a5f3c674e722c374586b": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.97,
+   "findings": [
+    {
+     "code": "PROFILE_CONSISTENT",
+     "note": "Verified corporate customer, device verified, normal velocity, amount below threshold.",
+     "record_ids": [
+      "CUS-0021",
+      "DEV-0021",
+      "VEL-00085",
+      "TXN-00085"
+     ]
+    }
+   ],
+   "recommendation": "CLEAR"
+  },
+  "prompt_version": "inv-v1",
+  "ts": "2026-11-19T14:13:01.725688+00:00",
+  "usage": {
+   "completion_tokens": 172,
+   "prompt_tokens": 612,
+   "reasoning_tokens": 67,
+   "total_tokens": 784
+  }
  },
  "79927d2dc9a0b14fccf646c064191b674f9806c385161bb507e2a3f12d295b0c": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
@@ -257,6 +332,44 @@
   "score": 0.00044056051410734653,
   "ts": "2026-11-19T13:40:11.053612+00:00"
  },
+ "942082a191beb28503e71119d729a98754e9bddd4e7e103a74b33b57593c5ee5": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.95,
+   "findings": [
+    {
+     "code": "AMOUNT_OVER_THRESHOLD",
+     "note": "Transaction exceeds AED 10,000 limit.",
+     "record_ids": [
+      "TXN-00012"
+     ]
+    },
+    {
+     "code": "WATCHLIST_HIT",
+     "note": "Watchlist hit with DOB and nationality match.",
+     "record_ids": [
+      "WL-002"
+     ]
+    },
+    {
+     "code": "VELOCITY_ABNORMAL",
+     "note": "High 24h amount despite single transaction.",
+     "record_ids": [
+      "VEL-00012"
+     ]
+    }
+   ],
+   "recommendation": "BLOCK"
+  },
+  "prompt_version": "inv-v1",
+  "ts": "2026-11-19T14:11:56.374395+00:00",
+  "usage": {
+   "completion_tokens": 248,
+   "prompt_tokens": 668,
+   "reasoning_tokens": 89,
+   "total_tokens": 916
+  }
+ },
  "965057355d3e61d04ff22ccfcf428d56cbfb8f500d897edf7b20be9486fea104": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
   "prompt_version": "guard-v1",
@@ -274,6 +387,22 @@
   "prompt_version": "guard-v1",
   "score": 0.0004663955478463322,
   "ts": "2026-11-19T13:41:28.921508+00:00"
+ },
+ "9d099dea29eff19e29c3017b0465b67f916d022584fa411511fb1ee24c0af1b3": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.97,
+   "findings": [],
+   "recommendation": "CLEAR"
+  },
+  "prompt_version": "inv-v1",
+  "ts": "2026-11-19T14:13:51.517255+00:00",
+  "usage": {
+   "completion_tokens": 108,
+   "prompt_tokens": 607,
+   "reasoning_tokens": 69,
+   "total_tokens": 715
+  }
  },
  "a8cb40bf88f6b9068209ae5564d6c07d3545548291b4a73a8961439be328bf36": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
@@ -395,11 +524,83 @@
   "score": 0.0006398279801942408,
   "ts": "2026-11-19T13:40:55.319342+00:00"
  },
+ "e79116a3ec98f63051a021b4364e458c7737f912d439e9bf43a7cf01c9886f3a": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.92,
+   "findings": [
+    {
+     "code": "INJECTION_SIGNAL",
+     "note": "Memo injection signals detected associated with transaction.",
+     "record_ids": [
+      "TXN-00051"
+     ]
+    }
+   ],
+   "recommendation": "REVIEW"
+  },
+  "prompt_version": "inv-v1",
+  "ts": "2026-11-19T14:12:35.233186+00:00",
+  "usage": {
+   "completion_tokens": 149,
+   "prompt_tokens": 638,
+   "reasoning_tokens": 69,
+   "total_tokens": 787
+  }
+ },
+ "e8a41c28671e24cbe2e1a32e301df7946e930f39dac43ee85314166fef9f4f21": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.9,
+   "findings": [
+    {
+     "code": "INJECTION_SIGNAL",
+     "note": "Injection signals detected; transaction flagged.",
+     "record_ids": [
+      "TXN-00013"
+     ]
+    }
+   ],
+   "recommendation": "REVIEW"
+  },
+  "prompt_version": "inv-v1",
+  "ts": "2026-11-19T14:12:06.358781+00:00",
+  "usage": {
+   "completion_tokens": 145,
+   "prompt_tokens": 662,
+   "reasoning_tokens": 66,
+   "total_tokens": 807
+  }
+ },
  "e8dabedd9812da3478a137b4154f931b364e8aeeb4058a8020afc1d26dc86291": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
   "prompt_version": "guard-v1",
   "score": 0.00042149514774791896,
   "ts": "2026-11-19T13:41:22.573452+00:00"
+ },
+ "e9058975cdaee4d772177566c18bcdfe314f4638aa8fbc779a8086792b2ccdaa": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.9,
+   "findings": [
+    {
+     "code": "INJECTION_SIGNAL",
+     "note": "Injection signals detected in memo, potential tampering.",
+     "record_ids": [
+      "TXN-00033"
+     ]
+    }
+   ],
+   "recommendation": "REVIEW"
+  },
+  "prompt_version": "inv-v1",
+  "ts": "2026-11-19T14:12:25.824867+00:00",
+  "usage": {
+   "completion_tokens": 154,
+   "prompt_tokens": 635,
+   "reasoning_tokens": 72,
+   "total_tokens": 789
+  }
  },
  "eb83c4d16c89b657761f60300d1a335c3f459a26d2d2535c1bbe5c9d572c9acf": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
@@ -412,6 +613,32 @@
   "prompt_version": "guard-v1",
   "score": 0.0004700233112089336,
   "ts": "2026-11-19T13:41:24.720803+00:00"
+ },
+ "f15b194180c64a5ee5c238453ff02c9262739ad98dbf7e25f2479550188fafdc": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.96,
+   "findings": [
+    {
+     "code": "PROFILE_CONSISTENT",
+     "note": "Verified customer, device, and low velocity match normal behavior.",
+     "record_ids": [
+      "CUS-0013",
+      "DEV-0013",
+      "VEL-00064"
+     ]
+    }
+   ],
+   "recommendation": "CLEAR"
+  },
+  "prompt_version": "inv-v1",
+  "ts": "2026-11-19T14:12:44.048978+00:00",
+  "usage": {
+   "completion_tokens": 154,
+   "prompt_tokens": 612,
+   "reasoning_tokens": 58,
+   "total_tokens": 766
+  }
  },
  "f845276351e1b71d9f7205956595566c3f3730fc9c65b6a1a5531d9022b41b76": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
@@ -436,6 +663,30 @@
   "prompt_version": "guard-v1",
   "score": 0.0003584680671337992,
   "ts": "2026-11-19T13:39:14.352007+00:00"
+ },
+ "fc826cd8fe1509cc1769701bb0d06cb0597130252a2a0620016b1256ab8b9dd8": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.9,
+   "findings": [
+    {
+     "code": "INJECTION_SIGNAL",
+     "note": "Injection patterns detected in memo; transaction details reviewed.",
+     "record_ids": [
+      "TXN-00023"
+     ]
+    }
+   ],
+   "recommendation": "REVIEW"
+  },
+  "prompt_version": "inv-v1",
+  "ts": "2026-11-19T14:12:16.827069+00:00",
+  "usage": {
+   "completion_tokens": 177,
+   "prompt_tokens": 647,
+   "reasoning_tokens": 95,
+   "total_tokens": 824
+  }
  },
  "fcf766f2ddf9f79f73b6fcb1e9bc9b6400ae7130555705fbe5ca692ace870835": {
   "model": "meta-llama/llama-prompt-guard-2-86m",

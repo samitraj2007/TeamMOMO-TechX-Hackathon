@@ -1,15 +1,18 @@
-"""Per-case pipeline: RECEIVED -> QUARANTINED -> EVIDENCE_GATHERED -> (INVESTIGATOR, Phase 1) -> POLICY_DECIDED -> GATE."""
+"""Per-case pipeline: RECEIVED -> QUARANTINED -> EVIDENCE_GATHERED -> INVESTIGATOR -> POLICY_DECIDED -> GATE."""
 
+import dataclasses
 import sqlite3
 import time
 from typing import Literal
 
 from pydantic import BaseModel
 
+from backend.app.agents.investigator import (EvidenceRecord, Investigator, InvestigatorInput, InvestigatorResult,
+                                             PolicyFacts)
 from backend.app.policy.engine import PolicyConfig, PolicyInput, decide
 from backend.app.schemas import ActorType, KycDevicesResult, Resolution, Route, SanctionsResult, Velocity
 from backend.app.security.classifier import Guard
-from backend.app.security.quarantine import MemoFacts, QuarantineResult, quarantine
+from backend.app.security.quarantine import QuarantineResult, quarantine
 from backend.app.services.case_resolution import commit_case_resolution
 from backend.app.services.kyc_devices import RecordNotFound, fetch_customer_kyc_and_devices
 from backend.app.services.sanctions import check_sanctions_watchlist
@@ -48,15 +51,6 @@ class DecisionOut(BaseModel):
     threshold_aed: float
 
 
-class InvestigatorInput(BaseModel):
-    """Exactly what the Phase 1 investigator will receive: typed facts and record IDs, never raw text."""
-    memo_facts: MemoFacts
-    amount_aed: float
-    evidence_record_ids: list[str]
-    watchlist_band: str
-    device_known_and_verified: bool | None
-
-
 class CaseRun(BaseModel):
     alert_id: str
     txn_id: str
@@ -64,6 +58,8 @@ class CaseRun(BaseModel):
     quarantine: QuarantineResult
     evidence: Evidence
     investigator_input: InvestigatorInput
+    investigator: InvestigatorResult
+    code_route: Route
     decision: DecisionOut
     resolution: Resolution | None
     gate: Literal["AUTO_COMMITTED", "AWAITING_ANALYST", "AWAITING_APPROVAL", "ALREADY_RESOLVED"]
@@ -116,7 +112,50 @@ def _gather_evidence(conn: sqlite3.Connection, txn: dict) -> Evidence:
                     record_ids=ids)
 
 
-def run_case(conn: sqlite3.Connection, alert_id: str, guard: Guard, threshold: float) -> CaseRun:
+def evidence_records(txn: dict, ev: Evidence) -> list[EvidenceRecord]:
+    """Typed view of the evidence for the investigator. Names, DOBs, labels and notes are deliberately absent."""
+    recs = [EvidenceRecord(record_id=txn["record_id"], kind="TRANSACTION", facts={
+        "amount": txn["amount"], "currency": txn["currency"], "channel": txn["channel"], "country": txn["country"]})]
+    if ev.kyc is not None:
+        c = ev.kyc.customer
+        recs.append(EvidenceRecord(record_id=c.record_id, kind="CUSTOMER", facts={
+            "segment": c.segment, "kyc_status": c.kyc_status, "risk_rating": c.risk_rating,
+            "nationality": c.nationality, "devices_on_file": len(ev.kyc.devices)}))
+        d = ev.kyc.txn_device
+        recs.append(EvidenceRecord(record_id=d.record_id, kind="DEVICE", facts={
+            "verified": d.verified, "first_seen": d.first_seen,
+            "known_to_customer": any(x.record_id == d.record_id for x in ev.kyc.devices)}))
+    for subject, s in (("customer", ev.sanctions_customer), ("payee", ev.sanctions_payee)):
+        for m in s.matches if s is not None else []:
+            recs.append(EvidenceRecord(record_id=m.watchlist_id, kind="WATCHLIST_MATCH", facts={
+                "subject": subject, "band": m.band, "matched_on": m.matched_on, "dob_match": m.dob_match,
+                "nationality_match": m.nationality_match}))
+    if ev.velocity is not None:
+        v = ev.velocity
+        recs.append(EvidenceRecord(record_id=v.record_id, kind="VELOCITY", facts={
+            "txn_count_24h": v.txn_count_24h, "amount_24h": v.amount_24h, "new_payees_24h": v.new_payees_24h}))
+    seen: set[str] = set()
+    return [r for r in recs if not (r.record_id in seen or seen.add(r.record_id))]
+
+
+def _investigator_step(r: InvestigatorResult) -> Step:
+    tokens = f" · {r.usage.total_tokens} tok" if r.usage else ""
+    cached = " (cached)" if r.cached else ""
+    if r.failed:
+        return Step(key="investigator", label="Investigator (receives MemoFacts only)", actor="LLM",
+                    status="DEGRADED", duration_ms=r.duration_ms,
+                    summary=f"{r.status} - fail closed to human review{tokens}{cached}")
+    o = r.output
+    return Step(key="investigator", label="Investigator (receives MemoFacts only)", actor="LLM",
+                status="FLAGGED" if r.status != "ok" or o.recommendation != "CLEAR" else "DONE",
+                duration_ms=r.duration_ms,
+                summary=f"recommends {o.recommendation} ({o.confidence:.2f}) · {len(o.findings)} cited findings"
+                        + (f" · {len(r.invalid_citations)} uncited ID(s) rejected" if r.invalid_citations else "")
+                        + tokens + cached)
+
+
+def run_case(conn: sqlite3.Connection, alert_id: str, guard: Guard, threshold: float,
+             investigator: Investigator) -> CaseRun:
     t_total = time.perf_counter()
     steps: list[Step] = []
 
@@ -144,21 +183,32 @@ def run_case(conn: sqlite3.Connection, alert_id: str, guard: Guard, threshold: f
                       status="DONE" if ev.complete else "FAILED", duration_ms=_ms(t0),
                       summary=f"{len(ev.record_ids)} records · watchlist {band}"))
 
-    inv_input = InvestigatorInput(memo_facts=facts, amount_aed=txn["amount"], evidence_record_ids=ev.record_ids,
-                                  watchlist_band=band,
-                                  device_known_and_verified=ev.kyc.device_known_and_verified if ev.kyc else None)
-    steps.append(Step(key="investigator", label="Investigator (receives MemoFacts only)", actor="LLM",
-                      status="SKIPPED", duration_ms=0, summary="Phase 1: bounded tool loop + cited report"))
-
-    t0 = time.perf_counter()
     vel = ev.velocity
-    decision = decide(PolicyInput(
+    cfg = PolicyConfig(aed_block_threshold=threshold)
+    code_input = PolicyInput(
         amount=txn["amount"], currency=txn["currency"], watchlist_band=band,
         device_known_and_verified=bool(ev.kyc and ev.kyc.device_known_and_verified),
         txn_count_24h=vel.txn_count_24h if vel else 0, amount_24h=vel.amount_24h if vel else float("inf"),
         new_payees_24h=vel.new_payees_24h if vel else 0, injection_detected=facts.injection_detected,
         classifier_degraded=facts.classifier_status != "ok", evidence_complete=ev.complete,
-    ), PolicyConfig(aed_block_threshold=threshold))
+    )
+    code_decision = decide(code_input, cfg)
+
+    inv_input = InvestigatorInput(
+        case_id=alert_id, memo_facts=facts, evidence=evidence_records(txn, ev),
+        policy=PolicyFacts(threshold_aed=threshold, code_route=code_decision.route,
+                           code_reasons=[r.code for r in code_decision.reasons if r.route != Route.AUTO_CLEAR],
+                           classifier_status=facts.classifier_status, evidence_complete=ev.complete))
+    inv = investigator.run(inv_input)
+    steps.append(_investigator_step(inv))
+
+    t0 = time.perf_counter()
+    decision = decide(dataclasses.replace(
+        code_input,
+        llm_recommendation=inv.output.recommendation if inv.output is not None and not inv.failed else None,
+        investigator_failed=inv.failed,
+        verifier_passed=None if inv.failed else inv.status == "ok",
+    ), cfg)
     steps.append(Step(key="policy", label="Policy engine (pure Python)", actor="CODE",
                       status="FLAGGED" if decision.route != Route.AUTO_CLEAR else "DONE", duration_ms=_ms(t0),
                       summary=f"{decision.route.value} · " + ", ".join(r.code for r in decision.reasons[:3])))
@@ -184,7 +234,7 @@ def run_case(conn: sqlite3.Connection, alert_id: str, guard: Guard, threshold: f
                                "ALREADY_RESOLVED": "Case already resolved"}[gate]))
 
     return CaseRun(alert_id=alert_id, txn_id=txn["record_id"], steps=steps, quarantine=q, evidence=ev,
-                   investigator_input=inv_input,
+                   investigator_input=inv_input, investigator=inv, code_route=code_decision.route,
                    decision=DecisionOut(route=decision.route, threshold_aed=decision.threshold_aed,
                                         reasons=[ReasonOut(code=r.code, route=r.route, detail=r.detail)
                                                  for r in decision.reasons]),

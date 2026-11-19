@@ -29,6 +29,17 @@ def check(label: str, ok: bool, detail: str = "") -> None:
         failures.append(label)
 
 
+def check_investigator(run: dict, inv_ok: bool) -> None:
+    inv = run["investigator"]
+    u = inv.get("usage") or {}
+    detail = f"{inv['status']}" + (f", {u.get('total_tokens')} tok" if u else "") + (" cached" if inv["cached"] else "")
+    check(f"investigator ok ({detail})", not inv_ok or inv["status"] == "ok", inv["status"])
+    if inv["output"]:
+        known = {e["record_id"] for e in run["investigator_input"]["evidence"]}
+        cited = {i for f in inv["output"]["findings"] for i in f["record_ids"]}
+        check("every cited record exists in evidence", cited <= known, str(sorted(cited - known)))
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", default="http://127.0.0.1:8000")
@@ -40,9 +51,14 @@ def main() -> int:
         print(f"Backend unreachable at {base}: {e}")
         return 1
     print(f"health: {health}")
-    guard_ok = health.get("guard_live") or health.get("demo_mode") == "replay"
+    replay = health.get("demo_mode") == "replay"
+    guard_ok = health.get("guard_live") or replay
+    inv_ok = health.get("investigator_live") or replay
     if not guard_ok:
         print("  WARNING: classifier offline - Case A will fail closed to NEEDS_REVIEW instead of AUTO_CLEAR")
+    if not inv_ok:
+        print("  WARNING: investigator offline - Case A will fail closed to NEEDS_REVIEW instead of AUTO_CLEAR")
+    guard_ok = guard_ok and inv_ok
 
     status, _ = call(base, "POST", "/demo/reset")
     check("reset", status == 200)
@@ -56,6 +72,7 @@ def main() -> int:
     check(f"route {expected_a}", a["decision"]["route"] == expected_a, a["decision"]["route"])
     check("classifier verdict BENIGN", not guard_ok or a["quarantine"]["classifier_verdict"] == "BENIGN",
           a["quarantine"]["classifier_verdict"])
+    check_investigator(a, inv_ok)
 
     print("Case B (hostile memo, hero):")
     _, b = call(base, "POST", f"/cases/{tags['B']}/run")
@@ -63,12 +80,14 @@ def main() -> int:
     check("regex flagged with spans", b["quarantine"]["regex_flagged"] and bool(b["quarantine"]["spans"]))
     check("classifier responded", not guard_ok or b["quarantine"]["classifier_verdict"] != "UNAVAILABLE",
           b["quarantine"]["classifier_verdict"])
+    check_investigator(b, inv_ok)
     status, _ = call(base, "POST", f"/cases/{tags['B']}/commit", {"action": "CLEAR"})
     check("release without human refused (403)", status == 403, str(status))
 
     print("Case D (high value + watchlist):")
     _, d = call(base, "POST", f"/cases/{tags['D']}/run")
     check("route PENDING_APPROVAL", d["decision"]["route"] == "PENDING_APPROVAL", d["decision"]["route"])
+    check_investigator(d, inv_ok)
     status, _ = call(base, "POST", f"/cases/{tags['D']}/commit", {"action": "HOLD_AND_BLOCK"})
     check("commit without approval refused (403)", status == 403, str(status))
     status, dec = call(base, "POST", f"/cases/{tags['D']}/decision",

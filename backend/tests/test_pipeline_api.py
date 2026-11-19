@@ -6,6 +6,7 @@ from backend.app.agents.cache import JsonCache
 from backend.app.config import Settings, get_settings
 from backend.app.pipeline import run_case
 from backend.app.security.classifier import Guard
+from backend.tests.fakes import make_investigator
 
 
 class LowScoreBackend:
@@ -19,15 +20,20 @@ def guard(tmp_path, backend=LowScoreBackend()):
     return Guard(Settings(_env_file=None, groq_model_guard="guard-test"), JsonCache(tmp_path / "c.json"), backend)
 
 
+def inv(tmp_path):
+    """Investigator that agrees CLEAR: the deterministic layers alone must still route every case correctly."""
+    return make_investigator(tmp_path / "inv.json")
+
+
 def all_alerts(conn):
     return [r[0] for r in conn.execute("SELECT record_id FROM alerts ORDER BY record_id")]
 
 
 def test_golden_every_case_routes_as_labelled(conn, tmp_path):
-    g = guard(tmp_path)
+    g, i = guard(tmp_path), inv(tmp_path)
     wrong = []
     for alert_id in all_alerts(conn):
-        r = run_case(conn, alert_id, g, 10_000.0)
+        r = run_case(conn, alert_id, g, 10_000.0, i)
         expected = conn.execute("SELECT expected_route FROM transactions WHERE record_id = ?",
                                 (r.txn_id,)).fetchone()[0]
         if r.decision.route.value != expected:
@@ -36,18 +42,18 @@ def test_golden_every_case_routes_as_labelled(conn, tmp_path):
 
 
 def test_no_hostile_or_high_value_case_auto_clears(conn, tmp_path):
-    g = guard(tmp_path)
+    g, i = guard(tmp_path), inv(tmp_path)
     for alert_id in all_alerts(conn):
-        r = run_case(conn, alert_id, g, 10_000.0)
+        r = run_case(conn, alert_id, g, 10_000.0, i)
         txn = conn.execute("SELECT * FROM transactions WHERE record_id = ?", (r.txn_id,)).fetchone()
         if txn["injection_family"] or txn["amount"] > 10_000 or txn["scenario"] == "watchlist_hit":
             assert r.decision.route.value != "AUTO_CLEAR" and r.resolution is None
 
 
 def test_investigator_input_never_contains_raw_text(conn, tmp_path):
-    g = guard(tmp_path)
+    g, i = guard(tmp_path), inv(tmp_path)
     for alert_id in all_alerts(conn):
-        r = run_case(conn, alert_id, g, 10_000.0)
+        r = run_case(conn, alert_id, g, 10_000.0, i)
         txn = conn.execute("SELECT memo, payee_name FROM transactions WHERE record_id = ?", (r.txn_id,)).fetchone()
         dumped = r.investigator_input.model_dump_json()
         for raw in (txn["memo"], txn["payee_name"]):
@@ -61,7 +67,7 @@ def test_classifier_down_fails_closed(conn, demo, tmp_path):
             raise ConnectionError
 
     alert = conn.execute("SELECT record_id FROM alerts WHERE txn_id = ?", (demo["A"]["record_id"],)).fetchone()[0]
-    r = run_case(conn, alert, guard(tmp_path, Down()), 10_000.0)
+    r = run_case(conn, alert, guard(tmp_path, Down()), 10_000.0, inv(tmp_path))
     assert r.decision.route.value == "NEEDS_REVIEW"
     assert "CLASSIFIER_UNAVAILABLE" in {x.code for x in r.decision.reasons}
 
@@ -74,6 +80,7 @@ def client(tmp_path, monkeypatch):
                  groq_model_guard="guard-test")
     monkeypatch.setattr(main, "settings", s)
     monkeypatch.setattr(main, "_guard", Guard(s, JsonCache(s.cache_file), LowScoreBackend()))
+    monkeypatch.setattr(main, "_investigator", make_investigator(tmp_path / "inv.json"))
     monkeypatch.setattr(main, "_runs", {})
     get_settings.cache_clear()
     monkeypatch.setattr("backend.app.db.get_settings", lambda: s)
