@@ -8,6 +8,7 @@ import type {
   CaseSummary,
   CaseTimeline,
   DecisionOut,
+  EvalScorecard,
   Filing,
   Health,
   IngestIn,
@@ -64,7 +65,7 @@ export const api = {
   caseAudit: (id: string) => req<AuditEntry[]>(`/cases/${id}/audit`),
   verifyAudit: (anchor?: string) => req<AuditVerify>(`/audit/verify${anchor ? `?anchor=${anchor}` : ""}`),
   globalAudit: () => req<AuditEntry[]>("/audit"),
-  evalScorecard: () => req<Record<string, unknown>>("/eval"),
+  evalScorecard: () => req<EvalScorecard>("/eval"),
   record: (id: string) => req<RecordOut>(`/records/${id}`),
   commit: (id: string, action: Resolution["action"]) => req<Resolution>(`/cases/${id}/commit`, post({ action })),
   decide: (

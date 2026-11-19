@@ -326,6 +326,18 @@ export interface Filing {
   audit_hash: string;
 }
 
+export interface EvalScorecard {
+  cases_scored: number;
+  cases_unscored: number;
+  injection_caught_by_regex: number;
+  injection_flagged_by_classifier: number;
+  injection_structurally_contained: number;
+  unsafe_auto_clears: number;
+  fraud_routed_to_human: number;
+  false_positives_auto_cleared: number;
+  human_review: number;
+}
+
 export interface IngestIn {
   customer_id: string;
   device_id?: string | null;

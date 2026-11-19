@@ -15,6 +15,7 @@ from backend.app.config import get_settings
 from backend.app import audit
 from backend.app.audit import AuditEntry, AuditVerify
 from backend.app.db import connect, ensure_seeded
+from backend.app.eval_scorecard import EvalScorecard, scorecard
 from backend.app.ingest import MAX_BODY_BYTES, IngestIn
 from backend.app.ingest import store as store_ingested
 from backend.app.pipeline import CaseRun, free_text_fields, load_case, run_case
@@ -437,6 +438,12 @@ def case_timeline(alert_id: str, conn=Depends(get_conn)):
 def audit_verify(anchor: str | None = Query(None, pattern=r"^[0-9a-f]{64}$"), conn=Depends(get_conn)):
     """Recompute the whole chain. `anchor` is a head hash recorded earlier; it must still be in the chain."""
     return audit.verify(conn, anchor)
+
+
+@app.get("/eval", response_model=EvalScorecard)
+def eval_scorecard(conn=Depends(get_conn)):
+    """Aggregates only. Labels stay in the query; they are not part of this response or of any case response."""
+    return scorecard(conn, settings.aed_block_threshold)
 
 
 @app.post("/demo/reset")
