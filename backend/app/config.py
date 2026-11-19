@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     guard_threshold: float = 0.5
     llm_timeout_s: float = 10.0
 
+    backup_llm_name: str = "backup"
+    backup_llm_base_url: str = ""
+    backup_llm_api_key: str = ""
+    backup_llm_model: str = ""
+    backup_llm_reasoning_effort: str = ""
+
     db_path: str = "backend/data/gulf_horizon_mini.sqlite"
     cache_path: str = "backend/data/llm_cache.json"
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"

@@ -9,8 +9,8 @@ from pydantic import ValidationError
 
 import backend.app.agents.investigator as inv_mod
 from backend.app.agents.cache import JsonCache
-from backend.app.agents.investigator import (MAX_PROMPT_CHARS, SYSTEM_PROMPT, EvidenceRecord, GroqInvestigatorBackend,
-                                             Investigator)
+from backend.app.agents.investigator import (FAILOVER_STATUSES, MAX_PROMPT_CHARS, SYSTEM_PROMPT, EvidenceRecord,
+                                             GroqInvestigatorBackend, Investigator)
 from backend.app.config import Settings
 from backend.app.pipeline import free_text_fields, run_case
 from backend.app.schemas import ROUTE_SEVERITY
@@ -207,7 +207,8 @@ def test_failure_routes_benign_case_to_review(conn, demo, tmp_path, expected, re
     i = make_investigator(tmp_path / "i.json", ScriptedBackend(responder))
     r = run_case(conn, alert_of(conn, demo, "A"), guard(tmp_path / "g.json"), THRESHOLD, i)
     assert r.investigator.status == expected and r.investigator.failed
-    assert r.decision.route.value == "NEEDS_REVIEW" and "INVESTIGATOR_FAILED" in codes(r)
+    reason = "ALL_PROVIDERS_FAILED" if expected in FAILOVER_STATUSES else "INVESTIGATOR_FAILED"
+    assert r.decision.route.value == "NEEDS_REVIEW" and reason in codes(r)
     assert r.resolution is None and r.gate == "AWAITING_ANALYST"
     assert len(i.cache) == 0, "failures are never cached"
     assert next(s for s in r.steps if s.key == "investigator").status == "DEGRADED"

@@ -4,7 +4,7 @@ import json
 from typing import Callable
 
 from backend.app.agents.cache import JsonCache
-from backend.app.agents.investigator import Completion, Investigator, TokenUsage
+from backend.app.agents.investigator import Completion, Investigator, Provider, TokenUsage
 from backend.app.config import Settings
 
 USAGE = TokenUsage(prompt_tokens=300, completion_tokens=80, reasoning_tokens=30, total_tokens=380)
@@ -40,8 +40,10 @@ class ExplodingBackend:
         raise AssertionError("network call attempted")
 
 
-def make_investigator(cache, backend=None, mode: str = "live", model: str = "main-test") -> Investigator:
+def make_investigator(cache, backend=None, mode: str = "live", model: str = "main-test",
+                      backup=None, backup_model: str = "backup-test") -> Investigator:
     """`cache` is a path or a shared JsonCache (share it when another agent writes to the same file)."""
     s = Settings(_env_file=None, demo_mode=mode, groq_model_main=model)
     return Investigator(s, cache if isinstance(cache, JsonCache) else JsonCache(cache),
-                        ScriptedBackend() if backend is None else backend)
+                        ScriptedBackend() if backend is None else backend,
+                        Provider("backup", backup_model, backup) if backup is not None else None)

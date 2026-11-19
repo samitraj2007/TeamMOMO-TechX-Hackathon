@@ -43,6 +43,7 @@ def main() -> int:
     if guard.backend is None or (not args.guard_only and investigator.backend is None):
         print("Missing GROQ_API_KEY / GROQ_MODEL_GUARD / GROQ_MODEL_MAIN in .env - cannot prewarm.")
         return 2
+    investigator.backup = None  # the demo cache holds main-model output only
     if args.guard_only:
         investigator.backend = None
 

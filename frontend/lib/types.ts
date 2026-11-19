@@ -177,6 +177,8 @@ export interface InvestigatorResult {
   prompt_chars: number;
   usage: { prompt_tokens: number; completion_tokens: number; reasoning_tokens: number; total_tokens: number } | null;
   invalid_citations: string[];
+  provider: string | null;
+  attempts: { provider: string; model: string; status: InvestigatorResult["status"]; duration_ms: number }[];
 }
 
 export interface CaseRun {

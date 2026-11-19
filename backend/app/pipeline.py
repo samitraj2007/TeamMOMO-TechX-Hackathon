@@ -145,16 +145,19 @@ def _investigator_step(r: InvestigatorResult) -> Step:
     tokens = f" · {r.usage.total_tokens} tok" if r.usage else ""
     cached = " (cached)" if r.cached else ""
     if r.failed:
+        tried = " · " + ", ".join(f"{a.provider} {a.status}" for a in r.attempts) if len(r.attempts) > 1 else ""
         return Step(key="investigator", label="Investigator (receives MemoFacts only)", actor="LLM",
                     status="DEGRADED", duration_ms=r.duration_ms,
-                    summary=f"{r.status} - fail closed to human review{tokens}{cached}")
+                    summary=f"{r.status} - fail closed to human review{tried}{tokens}{cached}")
     o = r.output
+    via = f" · via {r.provider} ({r.model}) after main {r.attempts[0].status}" \
+        if r.provider not in (None, "main") and r.attempts and r.attempts[0].provider == "main" else ""
     return Step(key="investigator", label="Investigator (receives MemoFacts only)", actor="LLM",
                 status="FLAGGED" if r.status != "ok" or o.recommendation != "CLEAR" else "DONE",
                 duration_ms=r.duration_ms,
                 summary=f"recommends {o.recommendation} ({o.confidence:.2f}) · {len(o.findings)} cited findings"
                         + (f" · {len(r.invalid_citations)} uncited ID(s) rejected" if r.invalid_citations else "")
-                        + tokens + cached)
+                        + via + tokens + cached)
 
 
 def run_case(conn: sqlite3.Connection, alert_id: str, guard: Guard, threshold: float,
@@ -221,6 +224,7 @@ def run_case(conn: sqlite3.Connection, alert_id: str, guard: Guard, threshold: f
         code_input,
         llm_recommendation=inv.output.recommendation if inv.output is not None and not inv.failed else None,
         investigator_failed=inv.failed,
+        provider_failures=tuple(f"{a.provider} {a.status}" for a in inv.attempts) if inv.providers_exhausted else (),
         verifier_passed=verifier_passed,
     ), cfg)
     steps.append(Step(key="policy", label="Policy engine (pure Python)", actor="CODE",

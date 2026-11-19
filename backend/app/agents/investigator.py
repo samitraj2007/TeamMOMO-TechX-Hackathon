@@ -1,4 +1,5 @@
-"""Investigator contract: typed facts in, typed cited findings out. One cached GROQ_MODEL_MAIN call per case.
+"""Investigator contract: typed facts in, typed cited findings out. One cached GROQ_MODEL_MAIN call per case,
+or one BACKUP_LLM_MODEL call when the main provider is rate-limited, times out or is unreachable.
 
 The investigator only advises. Its recommendation is one input to policy/engine.py, which can only make the route
 stricter. Every failure (timeout, 429, invalid JSON, uncited record, replay miss, not configured) comes back as a
@@ -99,6 +100,16 @@ class TokenUsage(BaseModel):
     total_tokens: int = 0
 
 
+FAILOVER_STATUSES = frozenset({"timeout", "rate_limited", "unavailable"})
+
+
+class ProviderAttempt(BaseModel):
+    provider: str
+    model: str
+    status: InvestigatorStatus
+    duration_ms: int
+
+
 class InvestigatorResult(BaseModel):
     status: InvestigatorStatus
     output: InvestigatorOutput | None
@@ -109,11 +120,19 @@ class InvestigatorResult(BaseModel):
     prompt_chars: int
     usage: TokenUsage | None
     invalid_citations: list[str] = []
+    provider: str | None = None
+    attempts: list[ProviderAttempt] = []
 
     @property
     def failed(self) -> bool:
         """True when no trustworthy recommendation exists; the policy engine then fails closed."""
         return self.status not in ("ok", "citation_invalid")
+
+    @property
+    def providers_exhausted(self) -> bool:
+        """Every configured provider was rate-limited, timed out or unreachable."""
+        return self.failed and bool(self.attempts) and all(
+            a.status in FAILOVER_STATUSES or a.status == "not_configured" for a in self.attempts)
 
 
 # ---- prompt ----
@@ -159,22 +178,25 @@ class InvestigatorBackend(Protocol):
     def complete(self, system: str, user: str) -> Completion: ...
 
 
-class GroqInvestigatorBackend:
-    """No retries on the live request path: a rate-limited or slow provider fails closed to review immediately."""
+class ChatBackend:
+    """Any OpenAI-compatible endpoint. No retries on the live request path: a rate-limited or slow provider
+    fails over (or closed, to review) immediately."""
 
-    def __init__(self, settings: Settings, rate_limit_retries: int = 0, sleep: Callable[[float], None] = time.sleep):
-        self.model = settings.groq_model_main
-        self.client = openai.OpenAI(api_key=settings.groq_api_key, base_url=settings.groq_base_url,
-                                    timeout=settings.llm_timeout_s, max_retries=0)
+    def __init__(self, model: str, api_key: str, base_url: str, timeout_s: float, reasoning_effort: str | None = "low",
+                 rate_limit_retries: int = 0, sleep: Callable[[float], None] = time.sleep):
+        self.model = model
+        self.client = openai.OpenAI(api_key=api_key or "unused", base_url=base_url, timeout=timeout_s, max_retries=0)
+        self.reasoning_effort = reasoning_effort
         self.rate_limit_retries = rate_limit_retries
         self.sleep = sleep
         self.rate_limited = 0
 
     def complete(self, system: str, user: str) -> Completion:
+        extra = {"reasoning_effort": self.reasoning_effort} if self.reasoning_effort else {}
         for attempt in range(self.rate_limit_retries + 1):
             try:
                 r = self.client.chat.completions.create(
-                    model=self.model, reasoning_effort="low", max_completion_tokens=MAX_COMPLETION_TOKENS,
+                    model=self.model, max_completion_tokens=MAX_COMPLETION_TOKENS, **extra,
                     response_format={"type": "json_schema", "json_schema": {
                         "name": "investigator_output", "strict": True, "schema": OUTPUT_JSON_SCHEMA}},
                     messages=[{"role": "system", "content": system}, {"role": "user", "content": user}])
@@ -191,6 +213,18 @@ class GroqInvestigatorBackend:
             reasoning_tokens=(getattr(details, "reasoning_tokens", None) or 0) if details else 0))
 
 
+class GroqInvestigatorBackend(ChatBackend):
+    def __init__(self, settings: Settings, rate_limit_retries: int = 0, sleep: Callable[[float], None] = time.sleep):
+        super().__init__(settings.groq_model_main, settings.groq_api_key, settings.groq_base_url,
+                         settings.llm_timeout_s, "low", rate_limit_retries, sleep)
+
+
+class Provider(NamedTuple):
+    name: str
+    model: str
+    backend: InvestigatorBackend
+
+
 # ---- the agent ----
 
 def _failure_status(e: Exception) -> InvestigatorStatus:
@@ -204,56 +238,94 @@ def _failure_status(e: Exception) -> InvestigatorStatus:
 
 
 class Investigator:
-    def __init__(self, settings: Settings, cache: JsonCache, backend: InvestigatorBackend | None):
+    """Main provider first; on rate limit, timeout or outage, the backup. Invalid output never fails over."""
+
+    def __init__(self, settings: Settings, cache: JsonCache, backend: InvestigatorBackend | None,
+                 backup: Provider | None = None):
         self.settings = settings
         self.cache = cache
         self.backend = backend
         self.model = settings.groq_model_main or "unset"
+        self.backup = backup if backup is not None and backup.model else None
+
+    @property
+    def providers(self) -> list[Provider]:
+        main = [Provider("main", self.model, self.backend)] if self.backend and self.settings.groq_model_main else []
+        return main + ([self.backup] if self.backup else [])
 
     def run(self, inp: InvestigatorInput) -> InvestigatorResult:
         t0 = time.perf_counter()
         user = render_user(inp)
         prompt_chars = len(SYSTEM_PROMPT) + len(user)
+        attempts: list[ProviderAttempt] = []
 
         def result(status: InvestigatorStatus, output: InvestigatorOutput | None = None, cached: bool = False,
-                   usage: TokenUsage | None = None) -> InvestigatorResult:
+                   usage: TokenUsage | None = None, model: str = self.model,
+                   provider: str | None = None) -> InvestigatorResult:
             invalid: list[str] = []
             if output is not None:
                 known = inp.record_ids()
                 invalid = sorted({i for f in output.findings for i in f.record_ids} - known)
                 if status == "ok" and invalid:
                     status = "citation_invalid"
-            return InvestigatorResult(status=status, output=output, model=self.model, prompt_version=PROMPT_VERSION,
+            return InvestigatorResult(status=status, output=output, model=model, prompt_version=PROMPT_VERSION,
                                       cached=cached, duration_ms=round((time.perf_counter() - t0) * 1000),
-                                      prompt_chars=prompt_chars, usage=usage, invalid_citations=invalid)
+                                      prompt_chars=prompt_chars, usage=usage, invalid_citations=invalid,
+                                      provider=provider, attempts=attempts)
 
-        key = cache_key(self.model, PROMPT_VERSION, f"{SYSTEM_PROMPT}\x1e{user}")
-        if (hit := self.cache.get(key)) is not None:
-            try:
-                return result("ok", InvestigatorOutput.model_validate(hit["output"]), cached=True,
-                              usage=TokenUsage(**hit.get("usage", {})))
-            except (ValidationError, KeyError, TypeError):
-                return result("invalid_output", cached=True)
+        prompt = f"{SYSTEM_PROMPT}\x1e{user}"
+        candidates = [("main", self.model)] + ([(self.backup.name, self.backup.model)] if self.backup else [])
+        for name, model in candidates:
+            if (hit := self.cache.get(cache_key(model, PROMPT_VERSION, prompt))) is not None:
+                try:
+                    return result("ok", InvestigatorOutput.model_validate(hit["output"]), cached=True,
+                                  usage=TokenUsage(**hit.get("usage", {})), model=model, provider=name)
+                except (ValidationError, KeyError, TypeError):
+                    return result("invalid_output", cached=True, model=model, provider=name)
         if self.settings.demo_mode == "replay":
             return result("cache_miss")
-        if self.backend is None or not self.settings.groq_model_main:
+        providers = self.providers
+        if not providers:
             return result("not_configured")
         if prompt_chars > MAX_PROMPT_CHARS:
             return result("prompt_too_large")
 
+        status: InvestigatorStatus = "unavailable"
         usage = None
-        try:
-            completion = self.backend.complete(SYSTEM_PROMPT, user)
-            usage = completion.usage
-            output = InvestigatorOutput.model_validate_json(completion.content or "")
-        except Exception as e:
-            return result(_failure_status(e), usage=usage)
-        self.cache.put(key, {"output": output.model_dump(mode="json"), "usage": usage.model_dump(),
-                             "model": self.model, "prompt_version": PROMPT_VERSION,
-                             "ts": datetime.now(timezone.utc).isoformat()})
-        return result("ok", output, usage=usage)
+        for p in providers:
+            t1 = time.perf_counter()
+            usage = None
+            try:
+                completion = p.backend.complete(SYSTEM_PROMPT, user)
+                usage = completion.usage
+                output = InvestigatorOutput.model_validate_json(completion.content or "")
+            except Exception as e:
+                status = _failure_status(e)
+                attempts.append(ProviderAttempt(provider=p.name, model=p.model, status=status,
+                                                duration_ms=round((time.perf_counter() - t1) * 1000)))
+                if status in FAILOVER_STATUSES:
+                    continue
+                return result(status, usage=usage, model=p.model, provider=p.name)
+            attempts.append(ProviderAttempt(provider=p.name, model=p.model, status="ok",
+                                            duration_ms=round((time.perf_counter() - t1) * 1000)))
+            self.cache.put(cache_key(p.model, PROMPT_VERSION, prompt), {
+                "output": output.model_dump(mode="json"), "usage": usage.model_dump(), "model": p.model,
+                "provider": p.name, "prompt_version": PROMPT_VERSION, "ts": datetime.now(timezone.utc).isoformat()})
+            return result("ok", output, usage=usage, model=p.model, provider=p.name)
+        if self.backup is None:
+            attempts.append(ProviderAttempt(provider="backup", model="", status="not_configured", duration_ms=0))
+        return result(status, usage=usage, model=attempts[0].model, provider=None)
+
+
+def build_backup(settings: Settings) -> Provider | None:
+    if not (settings.backup_llm_model and settings.backup_llm_base_url):
+        return None
+    backend = ChatBackend(settings.backup_llm_model, settings.backup_llm_api_key, settings.backup_llm_base_url,
+                          settings.llm_timeout_s, settings.backup_llm_reasoning_effort or None)
+    return Provider(settings.backup_llm_name or "backup", settings.backup_llm_model, backend)
 
 
 def build_investigator(settings: Settings, cache: JsonCache, **backend_opts) -> Investigator:
     configured = settings.groq_api_key and settings.groq_model_main
-    return Investigator(settings, cache, GroqInvestigatorBackend(settings, **backend_opts) if configured else None)
+    return Investigator(settings, cache, GroqInvestigatorBackend(settings, **backend_opts) if configured else None,
+                        build_backup(settings))

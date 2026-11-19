@@ -33,6 +33,7 @@ class PolicyInput:
     evidence_complete: bool = True
     llm_recommendation: Literal["CLEAR", "REVIEW", "BLOCK"] | None = None
     investigator_failed: bool = False
+    provider_failures: tuple[str, ...] = ()
     verifier_passed: bool | None = None
 
 
@@ -79,7 +80,10 @@ def decide(inp: PolicyInput, cfg: PolicyConfig = PolicyConfig()) -> PolicyDecisi
         escalate("CLASSIFIER_UNAVAILABLE", Route.NEEDS_REVIEW, "Injection classifier did not return; fail closed")
     if not inp.evidence_complete:
         escalate("EVIDENCE_INCOMPLETE", Route.NEEDS_REVIEW, "An evidence service failed")
-    if inp.investigator_failed:
+    if inp.investigator_failed and inp.provider_failures:
+        escalate("ALL_PROVIDERS_FAILED", Route.NEEDS_REVIEW,
+                 f"No model provider answered ({', '.join(inp.provider_failures)}); fail closed")
+    elif inp.investigator_failed:
         escalate("INVESTIGATOR_FAILED", Route.NEEDS_REVIEW, "Investigator error or timeout; fail closed")
     if inp.verifier_passed is False:
         escalate("VERIFIER_REJECTED", Route.NEEDS_REVIEW, "Report contained uncited claims")

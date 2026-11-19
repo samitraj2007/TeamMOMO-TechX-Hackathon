@@ -139,7 +139,8 @@ def health() -> dict:
     guard, inv = get_guard(), get_investigator()
     return {"status": "ok", "demo_mode": settings.demo_mode, "guard_model": settings.groq_model_guard or None,
             "guard_live": guard.backend is not None, "investigator_model": settings.groq_model_main or None,
-            "investigator_live": inv.backend is not None, "cache_entries": len(guard.cache),
+            "investigator_live": inv.backend is not None,
+            "backup_model": inv.backup.model if inv.backup else None, "cache_entries": len(guard.cache),
             "threshold_aed": settings.aed_block_threshold}
 
 

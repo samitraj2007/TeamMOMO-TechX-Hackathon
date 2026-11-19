@@ -29,6 +29,7 @@ inputs = st.builds(
     evidence_complete=st.booleans(),
     llm_recommendation=st.sampled_from([None, "CLEAR", "REVIEW", "BLOCK"]),
     investigator_failed=st.booleans(),
+    provider_failures=st.sampled_from([(), ("main timeout",), ("main rate_limited", "backup timeout")]),
     verifier_passed=st.sampled_from([None, True, False]),
 )
 
@@ -85,6 +86,8 @@ def test_injection_on_high_value_goes_to_strictest_route():
     ({"classifier_degraded": True}, "CLASSIFIER_UNAVAILABLE"),
     ({"evidence_complete": False}, "EVIDENCE_INCOMPLETE"),
     ({"investigator_failed": True}, "INVESTIGATOR_FAILED"),
+    ({"investigator_failed": True, "provider_failures": ("main rate_limited", "backup timeout")},
+     "ALL_PROVIDERS_FAILED"),
     ({"verifier_passed": False}, "VERIFIER_REJECTED"),
     ({"device_known_and_verified": False}, "DEVICE_UNVERIFIED"),
     ({"txn_count_24h": 6}, "VELOCITY_ABNORMAL"),
