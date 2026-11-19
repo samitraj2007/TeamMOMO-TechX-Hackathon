@@ -63,6 +63,8 @@ export const api = {
   report: (id: string) => req<Report>(`/cases/${id}/report`),
   caseAudit: (id: string) => req<AuditEntry[]>(`/cases/${id}/audit`),
   verifyAudit: (anchor?: string) => req<AuditVerify>(`/audit/verify${anchor ? `?anchor=${anchor}` : ""}`),
+  globalAudit: () => req<AuditEntry[]>("/audit"),
+  evalScorecard: () => req<Record<string, unknown>>("/eval"),
   record: (id: string) => req<RecordOut>(`/records/${id}`),
   commit: (id: string, action: Resolution["action"]) => req<Resolution>(`/cases/${id}/commit`, post({ action })),
   decide: (

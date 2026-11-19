@@ -23,7 +23,7 @@ export const useCases = (all = false) => useQuery({ queryKey: keys.cases(all), q
 export const useCase = (id: string) => useQuery({ queryKey: keys.case(id), queryFn: () => api.caseDetail(id) });
 export const useTimeline = (id: string) => useQuery({ queryKey: keys.timeline(id), queryFn: () => api.timeline(id) });
 export const useCaseAudit = (id: string) =>
-  useQuery({ queryKey: keys.caseAudit(id), queryFn: () => api.caseAudit(id) });
+  useQuery({ queryKey: keys.caseAudit(id), queryFn: () => api.caseAudit(id), enabled: id.length > 0 });
 export const useReport = (id: string, enabled: boolean) =>
   useQuery({ queryKey: keys.report(id), queryFn: () => api.report(id), enabled });
 export const useRecord = (id: string, enabled = true) =>
