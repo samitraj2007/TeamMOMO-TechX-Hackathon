@@ -159,6 +159,7 @@ export function ConsoleFrame({ children }: { children: ReactNode }) {
         <CommandPalette open={palette} onClose={() => setPalette(false)} commands={commands} dynamic={(q) => {
           const id = q.toUpperCase();
           if (/^ALT-\d+$/.test(id)) return [{ id: `open-${id}`, group: "From your input", label: `Open case ${id}`, run: () => router.push(`/case/${id}`) }];
+          if (/^TXN-\d{5,6}$/.test(id)) return [{ id: `find-${id}`, group: "From your input", label: `Find ${id} in transactions`, run: () => router.push(`/transactions?q=${id}`) }];
           return [];
         }} />
       </RecordProvider>
