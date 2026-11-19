@@ -63,6 +63,9 @@
   --text-lg--line-height: 28px;
   --text-xl: 28px;
   --text-xl--line-height: 36px;
+  --text-display: 64px;
+  --text-display--line-height: 68px;
+  --text-display--letter-spacing: -0.045em;
 
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);

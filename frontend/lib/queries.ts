@@ -20,7 +20,8 @@ export const useHealth = () => useQuery({ queryKey: keys.health, queryFn: api.he
 export const useVerify = () =>
   useQuery({ queryKey: keys.verify, queryFn: () => api.verifyAudit(), refetchInterval: 30_000 });
 export const useCases = (all = false) => useQuery({ queryKey: keys.cases(all), queryFn: () => api.cases(all) });
-export const useCase = (id: string) => useQuery({ queryKey: keys.case(id), queryFn: () => api.caseDetail(id) });
+export const useCase = (id: string) =>
+  useQuery({ queryKey: keys.case(id), queryFn: () => api.caseDetail(id), enabled: id.length > 0 });
 export const useTimeline = (id: string) => useQuery({ queryKey: keys.timeline(id), queryFn: () => api.timeline(id) });
 export const useCaseAudit = (id: string) =>
   useQuery({ queryKey: keys.caseAudit(id), queryFn: () => api.caseAudit(id), enabled: id.length > 0 });

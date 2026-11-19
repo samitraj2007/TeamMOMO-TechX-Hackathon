@@ -34,6 +34,7 @@ export function Airlock({
   spans,
   facts,
   rawReceived = null,
+  exhibit = false,
   className,
 }: {
   memo: string;
@@ -45,13 +46,15 @@ export function Airlock({
    * `null` means the API has not confirmed it, so the counter stays hidden.
    */
   rawReceived?: number | null;
+  /** Muted loop for the landing page: no drag, speed or scrub controls. */
+  exhibit?: boolean;
   className?: string;
 }) {
   const motionOK = useMotionOK();
   const { lang, demoSpeed } = usePrefs();
   const [clock, setClock] = useState(0);
-  const [started, setStarted] = useState(false);
-  const [wantPlay, setPlaying] = useState(false);
+  const [started, setStarted] = useState(exhibit);
+  const [wantPlay, setPlaying] = useState(exhibit);
   const [speedOverride, setSpeed] = useState<Speed | null>(null);
   const [scrubbed, setScrubbed] = useState(false);
   const [overGate, setOverGate] = useState(false);
@@ -75,12 +78,16 @@ export function Airlock({
       const next = Math.min(AIRLOCK.total, tRef.current + ((now - last) / 1000) * Number(speed));
       last = now;
       jump(next);
-      if (next >= AIRLOCK.total) setPlaying(false);
-      else raf = requestAnimationFrame(tick);
+      if (next >= AIRLOCK.total) {
+        if (exhibit) {
+          jump(0);
+          raf = requestAnimationFrame(tick);
+        } else setPlaying(false);
+      } else raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [playing, speed, jump]);
+  }, [playing, speed, jump, exhibit]);
 
   const run = () => {
     setScrubbed(false);
@@ -152,11 +159,14 @@ export function Airlock({
   }
 
   return (
-    <div className={cx("sheet flex flex-col overflow-hidden rounded-panel border border-hairline bg-surface", className)}>
+    <div
+      className={cx("sheet flex flex-col overflow-hidden rounded-panel border border-hairline bg-surface", className)}
+      style={exhibit ? { borderRadius: 12 } : undefined}
+    >
       <div className="flex min-h-11 flex-wrap items-center gap-2 border-b border-hairline/80 px-4 py-1.5">
         <h3 className="text-2xs font-medium uppercase tracking-[0.1em] text-muted">Quarantine airlock</h3>
         <Tag tone={n ? "red" : "sage"} variant="tint">{n ? `${n} injected span${n === 1 ? "" : "s"}` : "benign"}</Tag>
-        <div className="ms-auto flex items-center gap-1.5">
+        {!exhibit && <div className="ms-auto flex items-center gap-1.5">
           <SegmentedTabs<Speed> size="sm" label="Playback speed" value={speed} onChange={setSpeed}
             options={[{ value: "0.5", label: "0.5×" }, { value: "1", label: "1×" }, { value: "2", label: "2×" }]} />
           <Button size="sm" variant="ghost" disabled={!started || !motionOK || done} onClick={() => setPlaying((p) => !p)}
@@ -164,7 +174,7 @@ export function Airlock({
             {playing ? "Pause" : "Play"}
           </Button>
           <Button size="sm" variant="outline" onClick={run} icon={<IconReplay size={12} />} disabled={!started}>Replay</Button>
-        </div>
+        </div>}
       </div>
 
       {/* Guide: the mascot narrates each phase. */}
@@ -177,7 +187,7 @@ export function Airlock({
             {guide.state === "alert" && <span className="num ms-2 text-xs text-muted">{cutCount}/{n}</span>}
           </motion.span>
         </AnimatePresence>
-        {!started && (
+        {!exhibit && !started && (
           <Button size="sm" variant="accent" className="ms-auto" onClick={run} icon={<IconGate size={14} />}>
             {tr("sendGate", lang)}
           </Button>
@@ -188,7 +198,7 @@ export function Airlock({
         {/* Raw side: display only, never sent to a model. */}
         <div className="flex min-w-0 flex-col gap-3">
           <motion.div
-            drag={!started || done}
+            drag={!exhibit && (!started || done)}
             dragSnapToOrigin
             dragElastic={0.6}
             onDragStart={() => setOverGate(false)}
@@ -208,7 +218,7 @@ export function Airlock({
           <div className="flex flex-col gap-2" style={{ opacity: 0.25 + 0.75 * pEnter, transform: `translateY(${(1 - pEnter) * 6}px)` }}>
             <div className="flex items-center gap-2 text-2xs uppercase tracking-[0.1em] text-muted">
               <span aria-hidden className="h-1.5 w-1.5 rounded-[1px] bg-red" /> {tr("rawMemo", lang)}
-              {!started && <span className="ms-auto normal-case tracking-normal text-muted">{tr("dragHint", lang)}</span>}
+              {!exhibit && !started && <span className="ms-auto normal-case tracking-normal text-muted">{tr("dragHint", lang)}</span>}
             </div>
             <div ref={box} dir={rtl ? "rtl" : "ltr"} lang={rtl ? "ar" : "en"}
               className={cx("sheet relative min-h-24 overflow-hidden rounded-panel border bg-bg p-4 text-sm leading-6 text-text transition-colors duration-150",
@@ -305,7 +315,7 @@ export function Airlock({
         </div>
       </div>
 
-      <Scrubber t={t} phase={phase} onScrub={(v) => { setStarted(true); setPlaying(false); setScrubbed(true); jump(v); }} />
+      {!exhibit && <Scrubber t={t} phase={phase} onScrub={(v) => { setStarted(true); setPlaying(false); setScrubbed(true); jump(v); }} />}
       <p className="sr-only" aria-live="polite">
         {done ? `${n} injected span${n === 1 ? "" : "s"} neutralized.${rawReceived === null ? "" : ` Raw text received by the investigator: ${rawReceived}.`}` : ""}
       </p>
