@@ -90,7 +90,7 @@ export function ConsoleFrame({ children }: { children: ReactNode }) {
 
   const openIds = [caseId, ...demoCases.slice(0, 3).map((c) => c.alert_id)].filter((id): id is string => !!id && !closed.includes(id));
   const tabs: PaneTab[] = [...new Set(openIds)].map((id) => ({ id, label: id, mono: true, closable: true }));
-  const activeTab = caseId && tabs.some((t) => t.id === caseId) ? caseId : tabs[0]?.id;
+  const activeTab = caseId && tabs.some((tab) => tab.id === caseId) ? caseId : undefined;
 
   const h = health.data;
   const provider: { text: string; tone: Tone } = health.isError
