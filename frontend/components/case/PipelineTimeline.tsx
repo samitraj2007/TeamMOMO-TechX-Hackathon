@@ -1,87 +1,201 @@
 "use client";
 
 import { motion } from "motion/react";
-import type { ReactNode } from "react";
-import { ActorTag, StatusTag, Timestamp } from "@/components/primitives";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
+import { IconPause, IconPlay } from "@/components/icons";
+import { ActorTag, Button, StatusTag, Timestamp } from "@/components/primitives";
 import { cx } from "@/lib/cx";
 import { duration } from "@/lib/format";
 import { ACTOR_TONE, CALL_LABEL, STEP_LABEL, TONE_BG, TONE_BORDER } from "@/lib/labels";
-import { DUR, EASE, STAGGER, useMotionOK } from "@/lib/motion";
+import { DUR, EASE, SPRING, STAGGER, useMotionOK } from "@/lib/motion";
+import { usePrefs } from "@/lib/prefs";
 import type { TimelineCall, TimelineStep } from "@/lib/types";
 
 const plainIds = (ids: string[]) => <span className="num text-2xs text-muted">{ids.join(", ")}</span>;
 
 /**
  * Audit-backed pipeline timeline. Every row is a hash-chained audit entry; service calls nest under their step.
+ * Scrub: drag along the rail, click a node, or focus the rail and use arrow keys; later steps dim.
  * The staggered reveal runs when `revealKey` changes (a new run), never on refetch.
  */
 export function PipelineTimeline({
   steps,
   revealKey,
   renderRecords = plainIds,
+  onStepChange,
   className,
 }: {
   steps: TimelineStep[];
   revealKey?: string | number;
   renderRecords?: (ids: string[]) => ReactNode;
+  onStepChange?: (step: TimelineStep) => void;
   className?: string;
 }) {
   const motionOK = useMotionOK();
-  const runs = new Map<number, TimelineStep[]>();
-  for (const s of steps) runs.set(s.run, [...(runs.get(s.run) ?? []), s]);
-  let order = 0;
+  const { demoSpeed } = usePrefs();
+  const n = steps.length;
+  const [cursor, setCursorRaw] = useState(n - 1);
+  const [playing, setPlaying] = useState(false);
+  const list = useRef<HTMLOListElement>(null);
+  const nodes = useRef<(HTMLSpanElement | null)[]>([]);
+  const [centers, setCenters] = useState<number[]>([]);
+  const at = Math.min(cursor, n - 1);
+
+  const setCursor = (i: number) => {
+    const c = Math.max(0, Math.min(n - 1, i));
+    setCursorRaw(c);
+    if (steps[c]) onStepChange?.(steps[c]);
+  };
+
+  useLayoutEffect(() => {
+    const el = list.current;
+    if (!el) return;
+    const measure = () => setCenters(nodes.current.slice(0, n).map((nd) => (nd ? nd.offsetTop + nd.offsetHeight / 2 : 0)));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [n, revealKey]);
+
+  useEffect(() => {
+    if (!playing) return;
+    const timer = setInterval(() => {
+      setCursorRaw((c) => {
+        if (c >= n - 1) {
+          setPlaying(false);
+          return c;
+        }
+        return c + 1;
+      });
+    }, 650 / demoSpeed);
+    return () => clearInterval(timer);
+  }, [playing, n, demoSpeed]);
+
+  function nearest(clientY: number) {
+    const top = list.current?.getBoundingClientRect().top ?? 0;
+    const y = clientY - top;
+    let best = 0;
+    centers.forEach((c, i) => {
+      if (Math.abs(c - y) < Math.abs(centers[best] - y)) best = i;
+    });
+    return best;
+  }
+
+  function onScrubDown(e: PointerEvent<HTMLDivElement>) {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setPlaying(false);
+    setCursor(nearest(e.clientY));
+  }
+  function onScrubMove(e: PointerEvent<HTMLDivElement>) {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) setCursor(nearest(e.clientY));
+  }
+  function onKey(e: KeyboardEvent) {
+    const map: Record<string, number> = { ArrowDown: at + 1, ArrowUp: at - 1, Home: 0, End: n - 1 };
+    if (!(e.key in map)) return;
+    e.preventDefault();
+    setPlaying(false);
+    setCursor(map[e.key]);
+  }
+
+  const play = () => {
+    if (at >= n - 1) setCursorRaw(0);
+    setPlaying((p) => !p);
+  };
+
+  const multiRun = new Set(steps.map((s) => s.run)).size > 1;
+  const current = steps[at];
+  const showRunHeader = (i: number) => multiRun && (i === 0 || steps[i].run !== steps[i - 1].run);
 
   return (
-    <div key={revealKey} className={cx("flex flex-col gap-3", className)}>
-      {[...runs.entries()].map(([run, items]) => (
-        <section key={run} aria-label={`Run ${run}`} className="flex flex-col">
-          {runs.size > 1 && (
-            <div className="mb-1 flex items-center gap-2 text-2xs font-medium uppercase tracking-[0.08em] text-muted">
-              Run <span className="num">{run}</span>
-              <span aria-hidden className="h-px flex-1 bg-hairline" />
-            </div>
-          )}
-          <ol className="relative">
-            <span aria-hidden className="absolute bottom-2 start-[5px] top-2 w-px bg-hairline-strong" />
-            {items.map((s) => {
-              const delay = order++ * STAGGER.timelineStep;
-              return (
-                <motion.li
-                  key={s.audit_id}
-                  initial={motionOK ? { opacity: 0, y: 4 } : false}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: DUR.base, ease: EASE.out, delay }}
-                  className="relative grid grid-cols-[12px_1fr] gap-x-3 pb-3 last:pb-0"
-                >
-                  <span
+    <div className={cx("flex flex-col gap-3", className)}>
+      <div className="flex items-center gap-2">
+        <Button size="sm" variant="outline" onClick={play} icon={playing ? <IconPause size={12} /> : <IconPlay size={12} />}>
+          {playing ? "Pause" : at >= n - 1 ? "Replay steps" : "Play"}
+        </Button>
+        <span className="num text-2xs text-muted">step {at + 1} / {n}</span>
+        {current && <span className="truncate text-xs text-text">{STEP_LABEL[current.step] ?? current.step}</span>}
+      </div>
+      <ol key={revealKey} ref={list} className="relative">
+        {/* Rail, progress fill, and the scrub zone. */}
+        <span aria-hidden className="absolute bottom-3 start-[9px] top-3 w-px bg-hairline-strong" />
+        <motion.span aria-hidden className="absolute start-[9px] top-3 w-px origin-top bg-linear-to-b from-sage/40 via-sage to-brass"
+          animate={{ height: Math.max(0, (centers[at] ?? 0) - 12) }} transition={SPRING.soft} />
+        <div
+          role="slider"
+          tabIndex={0}
+          aria-label="Scrub the investigation"
+          aria-valuemin={1}
+          aria-valuemax={n}
+          aria-valuenow={at + 1}
+          aria-valuetext={current ? `${STEP_LABEL[current.step] ?? current.step}, ${current.status}` : undefined}
+          onPointerDown={onScrubDown}
+          onPointerMove={onScrubMove}
+          onKeyDown={onKey}
+          className="absolute inset-y-0 start-0 z-10 w-5 cursor-ns-resize touch-none rounded-control hover:bg-brass/5"
+        />
+        {steps.map((s, i) => {
+          const tone = ACTOR_TONE[s.actor_type];
+          const future = i > at;
+          const isCurrent = i === at;
+          return (
+            <Fragment key={s.audit_id}>
+              {showRunHeader(i) && (
+                <li aria-hidden className="mb-1 ms-7 flex items-center gap-2 text-2xs font-medium uppercase tracking-[0.1em] text-muted">
+                  Run <span className="num">{s.run}</span>
+                  <span className="h-px flex-1 bg-hairline" />
+                </li>
+              )}
+              <motion.li
+                initial={motionOK ? { opacity: 0, y: 4 } : false}
+                animate={{ opacity: future ? 0.32 : 1, y: 0 }}
+                transition={{ opacity: { duration: DUR.base }, y: { duration: DUR.base, ease: EASE.out, delay: i * STAGGER.timelineStep } }}
+                className="relative grid grid-cols-[20px_1fr] gap-x-3 pb-3 last:pb-0"
+              >
+                <span className="relative flex justify-center pt-2">
+                  {isCurrent && <span aria-hidden className="glow-brass absolute -inset-2 top-0 h-8" />}
+                  <motion.span
+                    ref={(el) => {
+                      nodes.current[i] = el;
+                    }}
                     aria-hidden
-                    className={cx("relative z-[1] mt-1.5 h-[11px] w-[11px] border bg-bg", TONE_BORDER[ACTOR_TONE[s.actor_type]])}
+                    animate={{ scale: isCurrent ? 1.25 : 1 }}
+                    transition={SPRING.ui}
+                    className={cx("relative z-[1] h-[11px] w-[11px] rounded-[3px] border bg-bg", isCurrent ? "border-brass" : TONE_BORDER[tone])}
                   >
-                    <span className={cx("absolute inset-[3px]", TONE_BG[ACTOR_TONE[s.actor_type]])} />
+                    <span className={cx("absolute inset-[2px] rounded-[1px]", future ? "bg-hairline-strong" : TONE_BG[tone])} />
+                  </motion.span>
+                </span>
+                <div
+                  onClick={() => {
+                    setPlaying(false);
+                    setCursor(i);
+                  }}
+                  className={cx(
+                    "flex min-w-0 cursor-pointer flex-col gap-1 rounded-panel border px-3 py-2 text-start transition-colors duration-150",
+                    isCurrent ? "sheet border-brass/40 bg-raised" : "border-transparent hover:border-hairline hover:bg-surface/60",
+                  )}
+                >
+                  <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                    <ActorTag actor={s.actor_type} />
+                    <span className="truncate text-sm font-medium text-text">{STEP_LABEL[s.step] ?? s.step}</span>
+                    <StatusTag status={s.status} />
+                    <span className="num ms-auto text-2xs text-muted">{duration(s.duration_ms)}</span>
                   </span>
-                  <div className="flex min-w-0 flex-col gap-1">
-                    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                      <ActorTag actor={s.actor_type} />
-                      <span className="truncate text-sm font-medium text-text">{STEP_LABEL[s.step] ?? s.step}</span>
-                      <StatusTag status={s.status} />
-                      <span className="num ms-auto text-2xs text-muted">{duration(s.duration_ms)}</span>
-                    </div>
-                    {s.summary && <p className="text-xs text-muted">{s.summary}</p>}
-                    {s.service_calls.length > 0 && (
-                      <ServiceCalls calls={s.service_calls} baseDelay={delay} motionOK={motionOK} renderRecords={renderRecords} />
-                    )}
-                    {s.service_calls.length === 0 && s.record_ids.length > 0 && <div>{renderRecords(s.record_ids)}</div>}
-                    <div className="flex items-center gap-2 text-2xs text-muted">
-                      <span className="num">{s.audit_id}</span>
-                      <Timestamp iso={s.ts} />
-                    </div>
-                  </div>
-                </motion.li>
-              );
-            })}
-          </ol>
-        </section>
-      ))}
+                  {s.summary && <span className="text-xs text-muted">{s.summary}</span>}
+                  {s.service_calls.length > 0 && (
+                    <ServiceCalls calls={s.service_calls} baseDelay={i * STAGGER.timelineStep} motionOK={motionOK} renderRecords={renderRecords} />
+                  )}
+                  {s.service_calls.length === 0 && s.record_ids.length > 0 && <span>{renderRecords(s.record_ids)}</span>}
+                  <span className="flex items-center gap-2 text-2xs text-muted">
+                    <span className="num">{s.audit_id}</span>
+                    <Timestamp iso={s.ts} />
+                  </span>
+                </div>
+              </motion.li>
+            </Fragment>
+          );
+        })}
+      </ol>
     </div>
   );
 }
@@ -99,9 +213,9 @@ function ServiceCalls({
 }) {
   const max = Math.max(1, ...calls.map((c) => c.duration_ms));
   return (
-    <ul className="flex flex-col border-s border-hairline ps-2">
+    <span className="flex flex-col gap-0.5 rounded-control border border-hairline/70 bg-bg/40 px-2 py-1">
       {calls.map((c, i) => (
-        <motion.li
+        <motion.span
           key={`${c.name}-${i}`}
           initial={motionOK ? { opacity: 0 } : false}
           animate={{ opacity: 1 }}
@@ -116,12 +230,15 @@ function ServiceCalls({
             {c.target && <span className="num truncate text-2xs text-muted">{c.target}</span>}
             {c.record_ids.length > 0 && renderRecords(c.record_ids)}
           </span>
-          <span aria-hidden className="h-1 bg-hairline">
-            <span className={cx("block h-full", c.ok ? "bg-sage" : "bg-red")} style={{ width: `${Math.max(4, (c.duration_ms / max) * 100)}%` }} />
+          <span aria-hidden className="h-1 overflow-hidden rounded-[1px] bg-hairline">
+            <motion.span className={cx("block h-full rounded-[1px]", c.ok ? "bg-sage" : "bg-red")}
+              initial={motionOK ? { width: 0 } : false}
+              animate={{ width: `${Math.max(4, (c.duration_ms / max) * 100)}%` }}
+              transition={{ duration: 0.24, ease: EASE.out, delay: baseDelay + 0.1 }} />
           </span>
           <span className="num text-end text-2xs text-muted">{duration(c.duration_ms)}</span>
-        </motion.li>
+        </motion.span>
       ))}
-    </ul>
+    </span>
   );
 }

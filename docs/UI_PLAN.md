@@ -1,8 +1,19 @@
 # GulfHorizon UI plan: "Obsidian Ledger"
 
-A dark, desaturated-green operations console in the spirit of Obsidian community themes (Minimal, Things, Primary, Blue Topaz, Sanctum): sharp, dense and calm, with purposeful motion. This document is the step 1 deliverable. Step 2 builds the design system and `/styleguide`; step 3 builds the screens. Each step stops for review.
+A deep forest-and-moss operations console in the spirit of Obsidian community themes (Minimal, Things, Primary, Blue Topaz, Sanctum): calm, warm and fluid, with boxy panels that are not locked to a visible grid, and real interactive behaviour. This document is the step 1 deliverable, revised after the step 2 review (see "Revision 1"). Step 2 builds the design system and `/styleguide`; step 3 builds the screens. Each step stops for review.
 
-Hard rules: corner radius 0 to 2px; no pills, capsule badges, drop-shadow cards, decorative gradients or emoji; 1px hairlines on a strict 4px grid; depth from surface tint only; monospace with tabular numerals for IDs, amounts, hashes and timestamps; self-hosted fonts; EN and AR with RTL for memo and report panels; WCAG AA; `prefers-reduced-motion` respected. Frontend only: never import the engine or change backend code.
+Hard rules (revision 1, superseding the original radius and grid rules):
+- Radius 6px on panels and cards, 3px on controls and tags. No pills, no capsule badges, no circle buttons; the only circle is the mascot avatar.
+- 1px hairline borders. Depth from surface tint, a faint inner highlight on the top edge, and a very subtle blurred glow behind active elements. No heavy drop shadows.
+- Gradients only as soft tints within one hue family. No emoji.
+- Monospace with tabular numerals for IDs, amounts, hashes and timestamps; self-hosted fonts; EN and AR with RTL for memo and report panels; WCAG AA for text; `prefers-reduced-motion` respected everywhere.
+- Frontend only: never import the engine or change backend code. Real data only; fixtures appear only on `/styleguide`, labelled.
+
+## Revision 1 (step 2 review)
+- **Problems fixed:** the first pass was too grid-like and rigid, its colours read as flat grey-green with near-white text, the mascot was missing, and it had too little interactive behaviour.
+- **Layout:** panels of varied width and height, slight overlaps and offsets, and a layered "stacked sheet" on key cards. Spacing is generous but uneven. Content still aligns inside each panel; the arrangement must not read as a spreadsheet. The visible 8px backdrop grid is removed.
+- **Mascot:** `public/brand/momo-mascot.png`, used as the logo in the rail, in loading and empty states, and as the guide at the quarantine airlock (see "Mascot").
+- **Interactions:** Motion springs throughout (see "Interaction spec").
 
 ## What exists today
 - **API client:** [frontend/lib/api.ts](../frontend/lib/api.ts) covers:
@@ -63,14 +74,15 @@ flowchart LR
 - **`/` redirects to `/queue`.** The Reset button appears only when `NEXT_PUBLIC_DEV_TOOLS=1`, in the palette and status bar, and asks for the admin token.
 - **Labels:** the backend's `LLM` actor is displayed as `MODEL` everywhere.
 
-## Layout grid
+## Layout and shape (revision 1)
 - **Spacing and borders:**
-  - Base unit 4px; every margin, padding and gap is a multiple of 4.
-  - Panel padding 12px; tile gap 8px.
-  - 1px hairline borders, radius 0 (2px only on focus rings and inputs).
-- **Bento:**
-  - The workspace is a 12-column grid with 8px gutters and rows aligned to 4px.
-  - Depth comes from surface tint (bg, then surface, then raised), never from shadows.
+  - Spacing still comes from the 4px scale, but gaps vary deliberately (8, 12, 20, 28px) so the arrangement breathes.
+  - Panel padding 12 to 16px. 1px hairline borders.
+  - Radius: `rounded-panel` 6px for panels, cards, drawers and popovers; `rounded-control` 3px for buttons, inputs, tags and tabs.
+- **Composition:**
+  - Panels of varied width and height. Key cards may overlap a neighbour by 12 to 24px or sit offset by a few pixels, and the most important card in a view gets the stacked-sheet treatment (two tinted sheets peeking out behind it).
+  - Workspace panes are draggable (reorder) and resizable; the rail collapses.
+  - Depth: surface tint (bg, then surface, then raised, then overlay), a 1px inner highlight along the top edge, and a soft blurred glow behind the active element only.
 - **Case screen** at 1440px or wider: timeline 320px, centre flexible, decision rail 344px. Below 1280px the timeline collapses into a drawer.
 ```
 +--------------------------------------------------------------------------------+
@@ -92,13 +104,14 @@ flowchart LR
 - **Queue:** KPI strip (4 tiles with count-ups) above a toolbar (lane segmented tabs, rule, amount band, search) above a dense table. Each row has a left status bar in its route colour and a demo-tag pin.
 - **Transactions:** a toolbar (search; alerted / not alerted / all segments; currency; amount range; sort) over a virtual-scroll table of all 1,000 rows from a single `limit=1000` call. Each row has a "Run" action. Rows without a rule-raised alert get a "Not alerted by rules" tag.
 
-## Tokens (proposed; frozen in step 2 after a browser check)
-- **Colours:**
-  - Base: bg `#0A0E0C`, surface `#0F1512`, raised `#141C17`, hairline `#213028`, text `#D6E0D9`, muted `#7B8B82`.
-  - Semantic: sage `#6E9B83` (CODE and positive), amber `#C9A24A` (review), red `#B5524A` (blocked and hostile), MODEL steel `#7C9DB8`, HUMAN sand `#C8B47A`.
-- **Contrast fixes:**
-  - Red `#B5524A` on bg is about 4.0:1, which fails AA for small text. Add `red-text #D27A70` and keep `#B5524A` for bars, borders and fills.
-  - muted is about 5.4:1 on bg and 4.8:1 on raised, which passes AA.
+## Tokens (revision 1)
+- **Colours:** deep forest and moss with a slight warm undertone.
+  - Base: bg `#0B100D`, surface `#111A14`, raised `#17231B`, overlay `#1D2B22`, hairline `#24342A`, hairline-strong `#33473A`.
+  - Text: warm off-white `#E4E8DD`; muted sage-grey `#97A496`.
+  - One warm accent, brass `#CFA65A`, for risk, review and focus rings.
+  - Actors: sage `#7FA88E` (CODE and positive), steel-blue `#86A5BF` (MODEL), sand `#D0BC86` (HUMAN).
+  - Red `#B5524A` for bars, borders and fills; `red-text #D27A70` for small red text.
+  - The styleguide prints live contrast ratios for every ink on bg, surface and raised; every text ink passes AA (4.5:1).
 - **Type:**
   - Geist for UI at 12, 13 (base), 14, 16, 20 and 28px.
   - JetBrains Mono with tabular numerals for IDs, amounts, hashes and timestamps.
@@ -106,7 +119,13 @@ flowchart LR
   - All self-hosted as woff2 files in `frontend/app/fonts/` (OFL licence files included) and loaded with `next/font/local`. No CDN and no font package.
 - **Backdrop** (app background only):
   - static SVG noise grain at 3% opacity;
-  - an 8px grid made of hairlines at 4% opacity.
+  - two very soft moss and deep-teal radial tints; no visible grid.
+
+## Mascot
+- **Asset:** `frontend/public/brand/momo-mascot.png` (the team's hand-drawn guard holding a lock shield).
+- **Where:** the logo at the top of the rail; the loading state (scanning) and the empty state (idle); the guide at the quarantine airlock.
+- **States:** `idle` (still), `scanning` (a lens sweep across the glasses and a slight lean), `alert` (one short shake and a red mark, when an injection is neutralised) and `approved` (one nod and a sage tick, once typed facts pass the gate). Each state carries a one-line caption at the airlock.
+- **Restraint:** small (24 to 72px) and only where it explains something. With reduced motion it shows the state mark without movement.
 
 ## Component inventory
 - **Shell:** `Ribbon`, `SidebarTree`, `PaneTabs`, `StatusBar`, `CommandPalette` (Ctrl+K: jump to an ALT or TXN ID, run a transaction, open a page).
@@ -161,7 +180,17 @@ flowchart LR
   - Verify sweep: each row lights in sequence at 24ms per row, capped at 1.2s total. Valid rows get a sage left bar; the sweep stops red at the first bad row.
   - Gate unlock: one 400ms sage outline pulse.
   - Drawer: 180ms slide plus fade. HoverCard: 120ms fade after a 250ms delay.
-  - Nothing else moves: no bounce, no parallax, no hover lifts.
+
+## Interaction spec (revision 1; Motion springs, all disabled or reduced to instant under reduced motion)
+- **Cards:** lift 2px and tilt at most 3 degrees towards the pointer on hover. Expandable panels open with shared-layout transitions (`layoutId`).
+- **Workspace:** panes reorder by dragging their header and resize by dragging the divider; the rail collapses to icons and expands to labels.
+- **Tabs:** segmented tabs and pane tabs slide their indicator between options (`layoutId`).
+- **Pipeline timeline:** scrubbable; drag along the rail, or use the arrow keys, to step through the investigation, with later steps dimmed. A Play control steps through at demo speed.
+- **Airlock:** drag the memo card into the gate, or press "Send through gate", to run it; speed control; replay; the mascot guides each phase.
+- **Records:** chips with hover preview cards and a side drawer; the Ctrl+K palette.
+- **Preferences:** EN/AR toggle for chrome strings and a global "demo speed" (0.5x, 1x, 2x) used by the airlock and the timeline player.
+- **Feedback:** number count-ups, a hash-chain verify sweep, one pulse when the approval gate unlocks, and micro-feedback on every control (press scale, brass focus ring, success tick).
+- **Still never:** bounce on data, parallax, looping decoration.
 
 ## File and folder plan (frontend only; no backend changes)
 - `app/fonts/*.woff2` plus OFL licences; `lib/fonts.ts`.

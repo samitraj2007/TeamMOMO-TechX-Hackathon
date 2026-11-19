@@ -1,7 +1,9 @@
 "use client";
 
-import { useRef, type KeyboardEvent, type ReactNode } from "react";
+import { motion } from "motion/react";
+import { useId, useRef, type KeyboardEvent, type ReactNode } from "react";
 import { cx } from "@/lib/cx";
+import { SPRING } from "@/lib/motion";
 
 export interface SegmentOption<T extends string> {
   value: T;
@@ -10,7 +12,7 @@ export interface SegmentOption<T extends string> {
   disabled?: boolean;
 }
 
-/** Square segmented control; arrow keys move between segments. */
+/** Segmented control whose indicator slides between options (shared layoutId). Arrow keys move. */
 export function SegmentedTabs<T extends string>({
   options,
   value,
@@ -26,6 +28,7 @@ export function SegmentedTabs<T extends string>({
   label: string;
   className?: string;
 }) {
+  const uid = useId();
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const enabled = options.filter((o) => !o.disabled);
 
@@ -41,7 +44,7 @@ export function SegmentedTabs<T extends string>({
 
   return (
     <div role="tablist" aria-label={label} onKeyDown={onKey}
-      className={cx("inline-flex border border-hairline bg-bg", className)}>
+      className={cx("inline-flex gap-0.5 rounded-control border border-hairline bg-bg/70 p-0.5", className)}>
       {options.map((o, i) => {
         const active = o.value === value;
         return (
@@ -57,15 +60,22 @@ export function SegmentedTabs<T extends string>({
             disabled={o.disabled}
             onClick={() => onChange(o.value)}
             className={cx(
-              "relative inline-flex items-center gap-1.5 border-e border-hairline last:border-e-0 transition-colors duration-[120ms]",
+              "press relative inline-flex items-center gap-1.5 rounded-xs",
               size === "sm" ? "h-6 px-2 text-xs" : "h-7 px-3 text-sm",
-              active ? "bg-raised text-text" : "text-muted hover:text-text",
+              active ? "text-text" : "text-muted hover:text-text",
               "disabled:cursor-not-allowed disabled:opacity-40",
             )}
           >
-            {o.label}
-            {o.count !== undefined && <span className="num text-2xs text-muted">{o.count}</span>}
-            {active && <span aria-hidden className="absolute inset-x-0 bottom-0 h-px bg-sage" />}
+            {active && (
+              <motion.span
+                layoutId={`seg-${uid}`}
+                transition={SPRING.ui}
+                aria-hidden
+                className="absolute inset-0 -z-0 rounded-xs border border-hairline-strong bg-raised shadow-sheen"
+              />
+            )}
+            <span className="relative">{o.label}</span>
+            {o.count !== undefined && <span className="num relative text-2xs text-muted">{o.count}</span>}
           </button>
         );
       })}

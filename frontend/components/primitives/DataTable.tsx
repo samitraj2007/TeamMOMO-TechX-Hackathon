@@ -71,9 +71,9 @@ export function DataTable<T>({
 
   return (
     <div role="table" aria-label={label} aria-rowcount={rows.length + 1}
-      className={cx("flex flex-col border border-hairline bg-surface", className)}>
+      className={cx("sheet flex flex-col overflow-hidden rounded-panel border border-hairline bg-surface", className)}>
       <div role="row" style={template}
-        className="grid h-8 shrink-0 items-center border-b border-hairline-strong bg-raised ps-3 pe-2">
+        className="grid h-9 shrink-0 items-center border-b border-hairline-strong bg-raised/80 ps-3 pe-2">
         {columns.map((c) => (
           <div key={c.key} role="columnheader"
             className={cx("flex min-w-0 px-1 text-2xs font-medium uppercase tracking-[0.08em] text-muted", align(c.align))}>
@@ -101,8 +101,8 @@ export function DataTable<T>({
                   onKeyDown={(e) => onKey(e, index, row)}
                   style={{ ...template, top: index * ROW, height: ROW }}
                   className={cx(
-                    "absolute inset-x-0 grid items-center border-b border-hairline ps-3 pe-2 text-sm outline-none",
-                    onRowActivate && "cursor-pointer hover:bg-raised focus-visible:bg-raised",
+                    "absolute inset-x-0 grid items-center border-b border-hairline/60 ps-3 pe-2 text-sm outline-none transition-colors duration-100",
+                    onRowActivate && "cursor-pointer hover:bg-raised/70 focus-visible:bg-raised focus-visible:outline-offset-[-2px]",
                   )}
                 >
                   {tone && <span aria-hidden className={cx("absolute inset-y-0 start-0 w-0.5", TONE_BG[tone])} />}

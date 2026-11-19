@@ -3,6 +3,7 @@ export * from "./Callout";
 export * from "./Data";
 export * from "./DataTable";
 export * from "./Form";
+export * from "./Interactive";
 export * from "./Overlay";
 export * from "./PropertiesTable";
 export * from "./SegmentedTabs";

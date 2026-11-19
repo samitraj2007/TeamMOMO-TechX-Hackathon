@@ -2,8 +2,8 @@ import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTML
 import { cx } from "@/lib/cx";
 
 const CONTROL =
-  "w-full rounded-sm border border-hairline-strong bg-bg px-2 text-sm text-text placeholder:text-muted " +
-  "outline-none transition-colors duration-[120ms] focus:border-sage disabled:opacity-40 " +
+  "w-full rounded-control border border-hairline-strong bg-bg/80 px-2.5 text-sm text-text placeholder:text-muted shadow-sheen " +
+  "outline-none transition-colors duration-[120ms] hover:border-[#405647] focus:border-brass/80 focus:bg-bg disabled:opacity-40 " +
   "aria-[invalid=true]:border-red";
 
 export function Field({
@@ -37,12 +37,12 @@ export function Field({
 }
 
 export function Input({ className, mono, ...rest }: InputHTMLAttributes<HTMLInputElement> & { mono?: boolean }) {
-  return <input className={cx(CONTROL, "h-8", mono && "num", className)} {...rest} />;
+  return <input className={cx(CONTROL, "h-9", mono && "num", className)} {...rest} />;
 }
 
 export function Select({ className, children, ...rest }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
-    <select className={cx(CONTROL, "h-8 pe-6", className)} {...rest}>
+    <select className={cx(CONTROL, "h-9 pe-6", className)} {...rest}>
       {children}
     </select>
   );

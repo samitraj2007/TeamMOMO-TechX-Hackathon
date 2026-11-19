@@ -186,6 +186,18 @@ export const fixtureRecordSource: RecordSource = {
   backlinks: (id) => BACKLINKS[id] ?? [],
 };
 
+/** 28 fixture audit links for the verify sweep. */
+export const CHAIN_FIXTURE = Array.from({ length: 28 }, (_, i) => ({
+  record_id: `AUD-F${String(i + 1).padStart(4, "0")}`,
+  hash: HASH(`chain-${i}`),
+}));
+
+/** Fixture verifier: a broken chain reports its first bad link, as GET /audit/verify does. */
+export async function verifyChainFixture(tampered: boolean) {
+  await new Promise((r) => setTimeout(r, 250));
+  return tampered ? { ok: false, first_bad_record_id: "AUD-F0019" } : { ok: true, first_bad_record_id: null };
+}
+
 const PAYEES = ["Falcon Ridge Trading", "Oasis Grid Utilities", "Dune Line Logistics", null, "Pearl Bay Tuition", "Saffron Desk Supplies"];
 const ROUTES = [null, "AUTO_CLEAR", "NEEDS_REVIEW", "PENDING_APPROVAL"] as const;
 

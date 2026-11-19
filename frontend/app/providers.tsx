@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MotionConfig } from "motion/react";
 import type { ReactNode } from "react";
+import { PrefsProvider } from "@/lib/prefs";
 
 let browserClient: QueryClient | undefined;
 
@@ -24,7 +25,9 @@ function getClient() {
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={getClient()}>
-      <MotionConfig reducedMotion="user">{children}</MotionConfig>
+      <MotionConfig reducedMotion="user">
+        <PrefsProvider>{children}</PrefsProvider>
+      </MotionConfig>
     </QueryClientProvider>
   );
 }

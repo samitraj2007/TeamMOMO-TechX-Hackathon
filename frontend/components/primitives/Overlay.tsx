@@ -5,7 +5,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { IconClose } from "@/components/icons";
 import { cx } from "@/lib/cx";
-import { DUR, EASE } from "@/lib/motion";
+import { DUR, EASE, SPRING } from "@/lib/motion";
 import { IconButton } from "./Button";
 
 function Portal({ children }: { children: ReactNode }) {
@@ -65,13 +65,13 @@ export function Drawer({
               aria-labelledby={titleId}
               tabIndex={-1}
               style={{ width }}
-              className="fixed inset-y-0 end-0 z-50 flex max-w-full flex-col border-s border-hairline-strong bg-surface outline-none"
-              initial={{ opacity: 0, x: 16 }}
+              className="sheet fixed inset-y-2 end-2 z-50 flex max-w-[calc(100%-16px)] flex-col overflow-hidden rounded-panel border border-hairline-strong bg-surface outline-none"
+              initial={{ opacity: 0, x: 24 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 16 }}
-              transition={{ duration: DUR.base, ease: EASE.out }}
+              exit={{ opacity: 0, x: 24 }}
+              transition={SPRING.soft}
             >
-              <header className="flex h-10 shrink-0 items-center gap-2 border-b border-hairline px-3">
+              <header className="flex h-11 shrink-0 items-center gap-2 border-b border-hairline px-4">
                 <h2 id={titleId} className="min-w-0 truncate text-sm font-medium text-text">{title}</h2>
                 <div className="ms-auto flex items-center gap-1">
                   {actions}
@@ -80,7 +80,7 @@ export function Drawer({
                   </IconButton>
                 </div>
               </header>
-              <div className="min-h-0 flex-1 overflow-y-auto p-3">{children}</div>
+              <div className="min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
             </motion.div>
           </>
         )}
@@ -143,11 +143,11 @@ export function HoverCard({
               onMouseEnter={() => clearTimeout(timer.current)}
               onMouseLeave={hide}
               style={{ ...pos, width }}
-              className="fixed z-50 border border-hairline-strong bg-overlay p-3 text-sm text-text"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: DUR.fast, ease: EASE.out }}
+              className="sheet fixed z-50 rounded-panel border border-hairline-strong bg-overlay p-3 text-sm text-text"
+              initial={{ opacity: 0, y: 4, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 2 }}
+              transition={SPRING.ui}
             >
               {content}
             </motion.div>

@@ -1,11 +1,15 @@
 "use client";
 
+import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { IconPause, IconPlay, IconReplay } from "@/components/icons";
-import { Button, SegmentedTabs, Tag } from "@/components/primitives";
+import { Mascot, type MascotState } from "@/components/brand/Mascot";
+import { IconGate, IconPause, IconPlay, IconReplay } from "@/components/icons";
+import { Button, GlowBehind, SegmentedTabs, Tag } from "@/components/primitives";
 import { cx } from "@/lib/cx";
 import { isMostlyArabic, shortHash } from "@/lib/format";
-import { AIRLOCK, AIRLOCK_PHASES, STAGGER, easeOut, progress, useMotionOK, type AirlockPhase } from "@/lib/motion";
+import { t as tr, type StringKey } from "@/lib/i18n";
+import { AIRLOCK, AIRLOCK_PHASES, SPRING, STAGGER, easeOut, progress, useMotionOK, type AirlockPhase } from "@/lib/motion";
+import { usePrefs } from "@/lib/prefs";
 import { mergeSpans, segmentText } from "@/lib/spans";
 import type { MemoFacts, Span } from "@/lib/types";
 
@@ -22,38 +26,40 @@ const PHASE_LABEL: Record<AirlockPhase, string> = {
 
 /**
  * Quarantine airlock: the raw memo stays on the left; only typed MemoFacts cross the gate.
- * One scrubbable clock `t` (seconds, 0..6) drives every element, so replay, speed and phase-jump are exact.
- * Reduced motion: the final state is shown and the clock does not run.
+ * Run it by dragging the memo into the gate or pressing "Send through gate". One scrubbable clock `t` (0..6 s)
+ * drives every element. The mascot guides each phase. Reduced motion: a run jumps straight to the end state.
  */
 export function Airlock({
   memo,
   spans,
   facts,
-  autoPlay = true,
   className,
 }: {
   memo: string;
   /** Spans on the memo field; offsets index the raw text. */
   spans: Span[];
   facts: MemoFacts;
-  autoPlay?: boolean;
   className?: string;
 }) {
   const motionOK = useMotionOK();
+  const { lang, demoSpeed } = usePrefs();
   const [clock, setClock] = useState(0);
-  const [wantPlay, setPlaying] = useState(autoPlay);
-  const [speed, setSpeed] = useState<Speed>("1");
+  const [started, setStarted] = useState(false);
+  const [wantPlay, setPlaying] = useState(false);
+  const [speedOverride, setSpeed] = useState<Speed | null>(null);
   const [scrubbed, setScrubbed] = useState(false);
+  const [overGate, setOverGate] = useState(false);
   const tRef = useRef(0);
+  const gateRef = useRef<HTMLDivElement>(null);
+  const speed = speedOverride ?? (String(demoSpeed) as Speed);
 
   const jump = useCallback((to: number) => {
     tRef.current = to;
     setClock(to);
   }, []);
 
-  // Reduced motion: show the end state unless the user scrubs; the clock never runs on its own.
   const playing = wantPlay && motionOK;
-  const t = motionOK || scrubbed ? clock : AIRLOCK.total;
+  const t = !started ? 0 : motionOK || scrubbed ? clock : AIRLOCK.total;
 
   useEffect(() => {
     if (!playing) return;
@@ -70,11 +76,9 @@ export function Airlock({
     return () => cancelAnimationFrame(raf);
   }, [playing, speed, jump]);
 
-  const replay = () => {
-    if (!motionOK) {
-      setScrubbed(false);
-      return;
-    }
+  const run = () => {
+    setScrubbed(false);
+    setStarted(true);
     jump(0);
     setPlaying(true);
   };
@@ -103,133 +107,197 @@ export function Airlock({
     return () => ro.disconnect();
   }, [merged]);
 
-  const pEnter = easeOut(progress(t, AIRLOCK.enter));
+  const pEnter = started ? easeOut(progress(t, AIRLOCK.enter)) : 1;
   const pScan = progress(t, AIRLOCK.scan);
   const pGate = easeOut(progress(t, AIRLOCK.gate));
   const pDeliver = easeOut(progress(t, AIRLOCK.deliver));
   const n = merged.length;
   const cutSpan = AIRLOCK.cut[1] - AIRLOCK.cut[0];
   const cutAt = (i: number) => AIRLOCK.cut[0] + (n > 1 ? (i / (n - 1)) * cutSpan * 0.7 : 0);
-  const hit = (i: number) => t >= AIRLOCK.scan[0] && pScan >= (spanY[i] ?? (merged[i].start / Math.max(1, memo.length)));
-  const isCut = (i: number) => t >= cutAt(i);
+  const hit = (i: number) => started && t >= AIRLOCK.scan[0] && pScan >= (spanY[i] ?? merged[i].start / Math.max(1, memo.length));
+  const isCut = (i: number) => started && t >= cutAt(i);
   const cutCount = merged.filter((_, i) => isCut(i)).length;
 
   const factRows = useFactRows(facts);
   const factVisible = (i: number) => progress(t, [AIRLOCK.facts[0] + i * STAGGER.factRow, AIRLOCK.facts[0] + i * STAGGER.factRow + 0.2]);
-  const done = t >= AIRLOCK.total;
+  const done = started && t >= AIRLOCK.total;
+  const scanning = started && t > AIRLOCK.scan[0] && t < AIRLOCK.scan[1];
   const pulse = t >= AIRLOCK.deliver[1] - 0.4 ? Math.sin(progress(t, [AIRLOCK.deliver[1] - 0.4, AIRLOCK.deliver[1]]) * Math.PI) : 0;
-  const delivered = t >= AIRLOCK.deliver[0] + 0.3;
+  const gatePulse = started && t >= AIRLOCK.gate[1] && t < AIRLOCK.gate[1] + 0.5;
+  const delivered = started && t >= AIRLOCK.deliver[0] + 0.3;
   const phase = [...AIRLOCK_PHASES].reverse().find((p) => t >= AIRLOCK[p][0]) ?? "enter";
 
+  const guide: { state: MascotState; caption: StringKey } = !started
+    ? { state: "idle", caption: "guideIdle" }
+    : t < AIRLOCK.cut[0]
+      ? { state: "scanning", caption: "guideScan" }
+      : t < AIRLOCK.deliver[0]
+        ? n > 0
+          ? { state: "alert", caption: "guideAlert" }
+          : { state: "idle", caption: "guideClean" }
+        : { state: "approved", caption: "guidePass" };
+
+  function onDrag(_: unknown, info: { point: { x: number; y: number } }) {
+    const r = gateRef.current?.getBoundingClientRect();
+    if (!r) return;
+    const x = info.point.x - window.scrollX;
+    const y = info.point.y - window.scrollY;
+    setOverGate(x > r.left - 32 && x < r.right + 32 && y > r.top - 32 && y < r.bottom + 32);
+  }
+
   return (
-    <div className={cx("flex flex-col border border-hairline bg-surface", className)}>
-      <div className="flex h-8 items-center gap-2 border-b border-hairline px-3">
-        <h3 className="text-2xs font-medium uppercase tracking-[0.08em] text-muted">Quarantine airlock</h3>
+    <div className={cx("sheet flex flex-col overflow-hidden rounded-panel border border-hairline bg-surface", className)}>
+      <div className="flex min-h-11 flex-wrap items-center gap-2 border-b border-hairline/80 px-4 py-1.5">
+        <h3 className="text-2xs font-medium uppercase tracking-[0.1em] text-muted">Quarantine airlock</h3>
         <Tag tone={n ? "red" : "sage"} variant="tint">{n ? `${n} injected span${n === 1 ? "" : "s"}` : "benign"}</Tag>
-        <div className="ms-auto flex items-center gap-1">
-          <SegmentedTabs<Speed>
-            size="sm"
-            label="Playback speed"
-            value={speed}
-            onChange={setSpeed}
-            options={[{ value: "0.5", label: "0.5×" }, { value: "1", label: "1×" }, { value: "2", label: "2×" }]}
-          />
-          <Button size="sm" variant="ghost" disabled={!motionOK || done} onClick={() => setPlaying((p) => !p)}
-            icon={playing ? <IconPause size={12} /> : <IconPlay size={12} />} aria-label={playing ? "Pause" : "Play"}>
+        <div className="ms-auto flex items-center gap-1.5">
+          <SegmentedTabs<Speed> size="sm" label="Playback speed" value={speed} onChange={setSpeed}
+            options={[{ value: "0.5", label: "0.5×" }, { value: "1", label: "1×" }, { value: "2", label: "2×" }]} />
+          <Button size="sm" variant="ghost" disabled={!started || !motionOK || done} onClick={() => setPlaying((p) => !p)}
+            icon={playing ? <IconPause size={12} /> : <IconPlay size={12} />}>
             {playing ? "Pause" : "Play"}
           </Button>
-          <Button size="sm" variant="outline" onClick={replay} icon={<IconReplay size={12} />}>Replay</Button>
+          <Button size="sm" variant="outline" onClick={run} icon={<IconReplay size={12} />} disabled={!started}>Replay</Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-[minmax(0,1.25fr)_56px_minmax(0,1fr)] gap-0 p-3">
+      {/* Guide: the mascot narrates each phase. */}
+      <div className="flex items-center gap-3 border-b border-hairline/60 bg-bg/30 px-4 py-2">
+        <Mascot state={guide.state} size={40} avatar />
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.span key={guide.caption} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.16 }} aria-live="polite" lang={lang} className={cx("text-sm", lang === "ar" && "ar", guide.state === "alert" ? "text-red-text" : guide.state === "approved" ? "text-sage" : "text-text")}>
+            {tr(guide.caption, lang)}
+            {guide.state === "alert" && <span className="num ms-2 text-xs text-muted">{cutCount}/{n}</span>}
+          </motion.span>
+        </AnimatePresence>
+        {!started && (
+          <Button size="sm" variant="accent" className="ms-auto" onClick={run} icon={<IconGate size={14} />}>
+            {tr("sendGate", lang)}
+          </Button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-[minmax(0,1.25fr)_88px_minmax(0,1fr)] gap-0 p-4">
         {/* Raw side: display only, never sent to a model. */}
-        <div className="flex min-w-0 flex-col gap-2" style={{ opacity: 0.25 + 0.75 * pEnter, transform: `translateY(${(1 - pEnter) * 6}px)` }}>
-          <div className="flex items-center gap-2 text-2xs uppercase tracking-[0.08em] text-muted">
-            <span aria-hidden className="h-1.5 w-1.5 bg-red" /> Raw memo · untrusted
-          </div>
-          <div ref={box} dir={rtl ? "rtl" : "ltr"} lang={rtl ? "ar" : "en"}
-            className={cx("relative min-h-24 overflow-hidden border border-hairline bg-bg p-3 text-sm leading-6 text-text", rtl && "ar")}>
-            {segments.map((seg, k) =>
-              seg.kind === "text" ? (
-                <span key={k}>{seg.text}</span>
-              ) : (
-                <span
-                  key={k}
-                  ref={(el) => {
-                    spanEls.current[seg.index] = el;
-                  }}
-                  title={seg.codes.join(", ")}
-                  className={cx(
-                    "transition-colors duration-[120ms]",
-                    isCut(seg.index)
-                      ? "hatch num border border-dashed border-red/60 px-1 text-2xs text-red-text [box-decoration-break:clone]"
-                      : hit(seg.index) && "bg-red/25 text-red-text outline outline-1 outline-red",
-                  )}
-                >
-                  {isCut(seg.index) ? `[neutralized · ${seg.codes[0]}]` : seg.text}
-                </span>
-              ),
-            )}
-            {t > AIRLOCK.scan[0] && t < AIRLOCK.scan[1] && (
-              <span aria-hidden className="pointer-events-none absolute inset-x-0 h-px bg-sage"
-                style={{ top: `${pScan * 100}%` }} />
-            )}
-          </div>
-          <div className="flex flex-col border border-hairline bg-bg">
-            <div className="flex h-7 items-center gap-2 border-b border-hairline px-2 text-2xs uppercase tracking-[0.08em] text-muted">
-              Neutralized tray
-              <span className={cx("num ms-auto", cutCount ? "text-red-text" : "text-muted")}>{cutCount} neutralized</span>
+        <div className="flex min-w-0 flex-col gap-3">
+          <motion.div
+            drag={!started || done}
+            dragSnapToOrigin
+            dragElastic={0.6}
+            onDragStart={() => setOverGate(false)}
+            onDrag={onDrag}
+            onDragEnd={() => {
+              if (overGate) run();
+              setOverGate(false);
+            }}
+            whileDrag={{ scale: 1.02, rotate: -1, zIndex: 20 }}
+            transition={SPRING.soft}
+            tabIndex={!started || done ? 0 : -1}
+            role={!started || done ? "button" : undefined}
+            aria-label={!started || done ? tr("dragHint", lang) : undefined}
+            onKeyDown={(e) => (!started || done) && (e.key === "Enter" || e.key === " ") && (e.preventDefault(), run())}
+            className={cx("relative rounded-panel", (!started || done) && "cursor-grab active:cursor-grabbing")}
+          >
+          <div className="flex flex-col gap-2" style={{ opacity: 0.25 + 0.75 * pEnter, transform: `translateY(${(1 - pEnter) * 6}px)` }}>
+            <div className="flex items-center gap-2 text-2xs uppercase tracking-[0.1em] text-muted">
+              <span aria-hidden className="h-1.5 w-1.5 rounded-[1px] bg-red" /> {tr("rawMemo", lang)}
+              {!started && <span className="ms-auto normal-case tracking-normal text-muted">{tr("dragHint", lang)}</span>}
             </div>
-            <ul className="flex min-h-9 flex-col px-2 py-1">
-              {n === 0 && <li className="py-1 text-xs text-muted">No injected spans found. The memo still never crosses the gate.</li>}
+            <div ref={box} dir={rtl ? "rtl" : "ltr"} lang={rtl ? "ar" : "en"}
+              className={cx("sheet relative min-h-24 overflow-hidden rounded-panel border bg-bg p-4 text-sm leading-6 text-text transition-colors duration-150",
+                overGate ? "border-brass/70" : "border-hairline", rtl && "ar")}>
+              {segments.map((seg, k) =>
+                seg.kind === "text" ? (
+                  <span key={k}>{seg.text}</span>
+                ) : (
+                  <span
+                    key={k}
+                    ref={(el) => {
+                      spanEls.current[seg.index] = el;
+                    }}
+                    title={seg.codes.join(", ")}
+                    className={cx(
+                      "rounded-[2px] transition-colors duration-[120ms] [box-decoration-break:clone]",
+                      isCut(seg.index)
+                        ? "hatch num border border-dashed border-red/60 px-1 text-2xs text-red-text"
+                        : hit(seg.index) && "bg-red/25 text-red-text outline outline-1 outline-red",
+                    )}
+                  >
+                    {isCut(seg.index) ? `[${tr("neutralized", lang)} · ${seg.codes[0]}]` : seg.text}
+                  </span>
+                ),
+              )}
+              {scanning && (
+                <span aria-hidden className="pointer-events-none absolute inset-x-0 flex items-center" style={{ top: `${pScan * 100}%` }}>
+                  <span className="h-px flex-1 bg-linear-to-r from-transparent via-brass to-brass" />
+                  <span className="-me-1 -translate-y-1/2"><Mascot state="scanning" size={22} /></span>
+                </span>
+              )}
+            </div>
+          </div>
+          </motion.div>
+          <div className="flex flex-col rounded-panel border border-hairline bg-bg/60">
+            <div className="flex h-8 items-center gap-2 border-b border-hairline/70 px-3 text-2xs uppercase tracking-[0.1em] text-muted">
+              {tr("tray", lang)}
+              <span className={cx("num ms-auto", cutCount ? "text-red-text" : "text-muted")}>{cutCount} {tr("neutralized", lang)}</span>
+            </div>
+            <ul className="flex min-h-9 flex-col gap-1 px-3 py-2">
+              {n === 0 && <li className="text-xs text-muted">No injected spans found. The memo still never crosses the gate.</li>}
               {merged.map((s, i) => (
-                <li key={i} className="flex items-center gap-2 py-0.5 text-xs"
-                  style={{ opacity: isCut(i) ? Math.min(1, (t - cutAt(i)) / 0.2) : 0 }}>
+                <motion.li key={i} className="flex items-center gap-2 text-xs"
+                  initial={false}
+                  animate={isCut(i) ? { opacity: 1, y: 0 } : { opacity: 0, y: -6 }}
+                  transition={SPRING.soft}>
                   <Tag tone="red" variant="outline" mono>{s.codes.join(" + ")}</Tag>
                   <span dir="auto" className="truncate text-muted line-through">{memo.slice(s.start, s.end)}</span>
-                </li>
+                </motion.li>
               ))}
             </ul>
           </div>
         </div>
 
         {/* Gate */}
-        <div className="flex flex-col items-center justify-center gap-2 px-2" aria-hidden>
-          <span className="text-2xs uppercase tracking-[0.08em] text-muted">gate</span>
-          <div className="relative h-40 w-6 border border-hairline-strong bg-bg">
-            <span className="absolute inset-x-0 top-0 bg-raised" style={{ height: `${50 - pGate * 38}%`, borderBottom: "1px solid var(--color-hairline-strong)" }} />
-            <span className="absolute inset-x-0 bottom-0 bg-raised" style={{ height: `${50 - pGate * 38}%`, borderTop: "1px solid var(--color-hairline-strong)" }} />
-            {t >= AIRLOCK.deliver[0] && t < AIRLOCK.deliver[1] && (
-              <span className="absolute top-1/2 h-2 w-2 -translate-y-1/2 bg-sage" style={{ insetInlineStart: `${-20 + pDeliver * 140}%` }} />
+        <div ref={gateRef} className="relative isolate flex flex-col items-center justify-center gap-2 px-3" aria-hidden>
+          {(overGate || gatePulse) && <GlowBehind tone={overGate ? "brass" : "sage"} />}
+          <span className="text-2xs uppercase tracking-[0.1em] text-muted">gate</span>
+          <div className={cx("relative h-44 w-8 overflow-hidden rounded-control border bg-bg transition-colors duration-150",
+            overGate ? "border-brass" : delivered ? "border-sage/70" : "border-hairline-strong")}>
+            <span className="absolute inset-x-0 top-0 rounded-b-[2px] border-b border-hairline-strong bg-raised" style={{ height: `${50 - pGate * 38}%` }} />
+            <span className="absolute inset-x-0 bottom-0 rounded-t-[2px] border-t border-hairline-strong bg-raised" style={{ height: `${50 - pGate * 38}%` }} />
+            {started && t >= AIRLOCK.deliver[0] && t < AIRLOCK.deliver[1] && (
+              <span className="absolute top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-[2px] bg-sage" style={{ insetInlineStart: `${-30 + pDeliver * 160}%` }} />
+            )}
+            {gatePulse && motionOK && (
+              <motion.span className="absolute inset-0 rounded-control border border-sage" initial={{ opacity: 0.9, scale: 1 }} animate={{ opacity: 0, scale: 1.4 }} transition={{ duration: 0.4 }} />
             )}
           </div>
           <span className="text-center text-2xs text-muted">typed only</span>
         </div>
 
         {/* Investigator side */}
-        <div className="flex min-w-0 flex-col gap-2">
-          <div className="flex items-center gap-2 text-2xs uppercase tracking-[0.08em] text-muted">
-            <span aria-hidden className="h-1.5 w-1.5 bg-sage" /> MemoFacts · typed
+        <div className="flex min-w-0 flex-col gap-3">
+          <div className="flex items-center gap-2 text-2xs uppercase tracking-[0.1em] text-muted">
+            <span aria-hidden className="h-1.5 w-1.5 rounded-[1px] bg-sage" /> {tr("memoFacts", lang)}
           </div>
-          <dl className={cx("flex flex-col border bg-bg transition-colors duration-[180ms]", delivered ? "border-sage" : "border-hairline")}>
+          <dl className={cx("sheet flex flex-col overflow-hidden rounded-panel border bg-bg transition-colors duration-[180ms]", delivered ? "border-sage/70" : "border-hairline")}>
             {factRows.map((r, i) => (
-              <div key={r.key} className="grid grid-cols-[112px_1fr] gap-2 border-b border-hairline px-2 py-1 text-xs last:border-b-0"
-                style={{ opacity: factVisible(i), transform: `translateX(${(1 - factVisible(i)) * -4}px)` }}>
+              <div key={r.key} className="grid grid-cols-[120px_1fr] gap-2 border-b border-hairline/60 px-3 py-1.5 text-xs last:border-b-0"
+                style={{ opacity: factVisible(i), transform: `translateX(${(1 - factVisible(i)) * -6}px)` }}>
                 <dt className="text-muted">{r.key}</dt>
                 <dd className="num min-w-0 truncate text-text">{r.value}</dd>
               </div>
             ))}
           </dl>
-          <div className="relative flex items-center gap-2 border border-hairline bg-bg px-2 py-1.5 text-xs"
-            style={{ backgroundColor: pulse ? `rgb(110 155 131 / ${0.18 * pulse})` : undefined }}>
-            <span className="text-muted">raw text received by investigator:</span>
-            <span className={cx("num text-sm font-medium", done || delivered ? "text-sage" : "text-muted")}>0</span>
+          <div className="relative flex items-center gap-2 overflow-hidden rounded-panel border border-hairline bg-bg px-3 py-2 text-xs"
+            style={{ backgroundColor: pulse ? `rgb(127 168 142 / ${0.2 * pulse})` : undefined }}>
+            <span className={cx("text-muted", lang === "ar" && "ar")}>{tr("rawReceived", lang)}:</span>
+            <span className={cx("num text-sm font-medium", delivered ? "text-sage" : "text-muted")}>0</span>
           </div>
         </div>
       </div>
 
-      <Scrubber t={t} onScrub={(v) => { setPlaying(false); setScrubbed(true); jump(v); }} phase={phase} />
+      <Scrubber t={t} phase={phase} onScrub={(v) => { setStarted(true); setPlaying(false); setScrubbed(true); jump(v); }} />
       <p className="sr-only" aria-live="polite">
         {done ? `${n} injected span${n === 1 ? "" : "s"} neutralized. The investigator receives typed MemoFacts only; raw text received: 0.` : ""}
       </p>
@@ -239,19 +307,24 @@ export function Airlock({
 
 function Scrubber({ t, onScrub, phase }: { t: number; onScrub: (t: number) => void; phase: AirlockPhase }) {
   return (
-    <div className="flex flex-col gap-1 border-t border-hairline px-3 py-2">
+    <div className="flex flex-col gap-1 border-t border-hairline/80 px-4 py-2.5">
       <div className="flex items-center gap-3">
-      <input
-        type="range"
-        min={0}
-        max={AIRLOCK.total}
-        step={0.01}
-        value={t}
-        onChange={(e) => onScrub(Number(e.target.value))}
-        aria-label="Airlock timeline"
-        aria-valuetext={`${t.toFixed(1)} s, ${PHASE_LABEL[phase]}`}
-        className="airlock-scrub min-w-0 flex-1"
-      />
+        <div className="relative h-4 min-w-0 flex-1">
+          <span aria-hidden className="absolute inset-x-0 top-1/2 h-[3px] -translate-y-1/2 rounded-[2px] bg-hairline-strong" />
+          <span aria-hidden className="absolute start-0 top-1/2 h-[3px] -translate-y-1/2 rounded-[2px] bg-linear-to-r from-sage/50 to-brass"
+            style={{ width: `${(t / AIRLOCK.total) * 100}%` }} />
+          <input
+            type="range"
+            min={0}
+            max={AIRLOCK.total}
+            step={0.01}
+            value={t}
+            onChange={(e) => onScrub(Number(e.target.value))}
+            aria-label="Airlock timeline"
+            aria-valuetext={`${t.toFixed(1)} s, ${PHASE_LABEL[phase]}`}
+            className="airlock-scrub absolute inset-0 w-full"
+          />
+        </div>
         <span className="num w-20 shrink-0 text-end text-2xs text-muted">{t.toFixed(1)} / {AIRLOCK.total.toFixed(1)} s</span>
       </div>
       <div className="relative me-[92px] h-5">
@@ -261,8 +334,8 @@ function Scrubber({ t, onScrub, phase }: { t: number; onScrub: (t: number) => vo
             type="button"
             onClick={() => onScrub(AIRLOCK[p][0])}
             className={cx(
-              "absolute top-0 border-s px-1 text-2xs transition-colors duration-[120ms]",
-              p === phase ? "border-sage text-text" : "border-hairline-strong text-muted hover:text-text",
+              "press absolute top-0 rounded-e-control border-s-2 px-1.5 text-2xs",
+              p === phase ? "border-brass text-text" : "border-hairline-strong text-muted hover:text-text",
             )}
             style={{ insetInlineStart: `${(AIRLOCK[p][0] / AIRLOCK.total) * 100}%` }}
           >

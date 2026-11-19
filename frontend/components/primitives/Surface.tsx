@@ -2,8 +2,9 @@ import type { ReactNode } from "react";
 import { cx } from "@/lib/cx";
 import { TONE_BG, type Tone } from "@/lib/labels";
 
-export type Tint = "bg" | "surface" | "raised";
-const TINT: Record<Tint, string> = { bg: "bg-bg", surface: "bg-surface", raised: "bg-raised" };
+export type Tint = "bg" | "surface" | "raised" | "overlay";
+const TINT: Record<Tint, string> = { bg: "bg-bg", surface: "bg-surface", raised: "bg-raised", overlay: "bg-overlay" };
+export type Glow = "brass" | "sage" | "red";
 
 export function PanelHeader({
   title,
@@ -17,21 +18,38 @@ export function PanelHeader({
   className?: string;
 }) {
   return (
-    <header className={cx("flex h-8 shrink-0 items-center gap-2 border-b border-hairline px-3", className)}>
+    <header className={cx("flex min-h-10 shrink-0 items-center gap-2 border-b border-hairline/80 px-4", className)}>
       {eyebrow}
-      <h2 className="truncate text-2xs font-medium uppercase tracking-[0.08em] text-muted">{title}</h2>
+      <h2 className="truncate text-2xs font-medium uppercase tracking-[0.1em] text-muted">{title}</h2>
       {actions && <div className="ms-auto flex items-center gap-1">{actions}</div>}
     </header>
   );
 }
 
-/** A bento cell. Depth comes from tint, never from shadow. */
+/** Soft blurred glow placed behind an active element. */
+export function GlowBehind({ tone, className }: { tone: Glow; className?: string }) {
+  return <span aria-hidden className={cx("pointer-events-none absolute -inset-4 -z-10", `glow-${tone}`, className)} />;
+}
+
+/** Two tinted sheets peeking out below a key card. */
+export function StackedSheets() {
+  return (
+    <>
+      <span aria-hidden className="absolute inset-x-3 -bottom-[7px] top-3 -z-10 rounded-panel border border-hairline bg-surface/90" />
+      <span aria-hidden className="absolute inset-x-6 -bottom-[14px] top-6 -z-20 rounded-panel border border-hairline/70 bg-bg/90" />
+    </>
+  );
+}
+
+/** A panel: 6px radius, hairline, tint plus top-edge highlight. Optional glow and stacked-sheet depth. */
 export function Panel({
   title,
   eyebrow,
   actions,
   tint = "surface",
   padded = true,
+  stacked = false,
+  glow,
   className,
   bodyClassName,
   children,
@@ -41,19 +59,25 @@ export function Panel({
   actions?: ReactNode;
   tint?: Tint;
   padded?: boolean;
+  stacked?: boolean;
+  glow?: Glow;
   className?: string;
   bodyClassName?: string;
   children: ReactNode;
 }) {
   return (
-    <section className={cx("flex min-w-0 flex-col border border-hairline", TINT[tint], className)}>
-      {title !== undefined && <PanelHeader title={title} eyebrow={eyebrow} actions={actions} />}
-      <div className={cx("min-h-0 flex-1", padded && "p-3", bodyClassName)}>{children}</div>
+    <section className={cx("relative isolate flex min-w-0 flex-col", stacked && "mb-3.5", className)}>
+      {glow && <GlowBehind tone={glow} />}
+      {stacked && <StackedSheets />}
+      <div className={cx("sheet relative flex min-h-0 flex-1 flex-col rounded-panel border border-hairline", TINT[tint])}>
+        {title !== undefined && <PanelHeader title={title} eyebrow={eyebrow} actions={actions} />}
+        <div className={cx("min-h-0 flex-1", padded && "p-4", bodyClassName)}>{children}</div>
+      </div>
     </section>
   );
 }
 
-/** KPI-style tile: label, a large value and a footnote, with an optional left accent bar. */
+/** KPI-style tile: label, a large value and a footnote, with an optional accent mark. */
 export function Tile({
   label,
   value,
@@ -70,9 +94,9 @@ export function Tile({
   className?: string;
 }) {
   return (
-    <div className={cx("relative flex min-w-0 flex-col gap-1 border border-hairline px-3 py-2", TINT[tint], className)}>
-      {tone && <span aria-hidden className={cx("absolute inset-y-0 start-0 w-0.5", TONE_BG[tone])} />}
-      <span className="text-2xs font-medium uppercase tracking-[0.08em] text-muted">{label}</span>
+    <div className={cx("sheet relative flex min-w-0 flex-col gap-1 rounded-panel border border-hairline px-4 py-3", TINT[tint], className)}>
+      {tone && <span aria-hidden className={cx("absolute bottom-3 start-0 top-3 w-0.5 rounded-e-sm", TONE_BG[tone])} />}
+      <span className="text-2xs font-medium uppercase tracking-[0.1em] text-muted">{label}</span>
       <span className="num text-lg font-medium text-text">{value}</span>
       {foot && <span className="text-xs text-muted">{foot}</span>}
     </div>

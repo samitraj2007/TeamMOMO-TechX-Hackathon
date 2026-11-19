@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import { IconSearch } from "@/components/icons";
 import { Kbd } from "@/components/primitives";
 import { cx } from "@/lib/cx";
-import { DUR, EASE } from "@/lib/motion";
+import { DUR, EASE, SPRING } from "@/lib/motion";
 
 export interface Command {
   id: string;
@@ -52,14 +52,16 @@ export function CommandPalette({
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-start justify-center bg-bg/70 pt-[14vh]"
+          className="fixed inset-0 z-50 flex items-start justify-center bg-bg/70 pt-[14vh] backdrop-blur-[2px]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: DUR.fast, ease: EASE.out }}
           onMouseDown={(e) => e.target === e.currentTarget && onClose()}
         >
-          <PaletteDialog onClose={onClose} commands={commands} dynamic={dynamic} placeholder={placeholder} />
+          <motion.div initial={{ y: -8, scale: 0.98 }} animate={{ y: 0, scale: 1 }} exit={{ y: -4, scale: 0.99 }} transition={SPRING.ui}>
+            <PaletteDialog onClose={onClose} commands={commands} dynamic={dynamic} placeholder={placeholder} />
+          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>
@@ -120,7 +122,7 @@ function PaletteDialog({
   let lastGroup = "";
   return (
     <div role="dialog" aria-modal="true" aria-label="Command palette" onKeyDown={onKey}
-      className="w-[560px] max-w-[calc(100vw-32px)] border border-hairline-strong bg-overlay">
+      className="sheet w-[560px] max-w-[calc(100vw-32px)] overflow-hidden rounded-panel border border-hairline-strong bg-overlay">
       <div className="flex h-10 items-center gap-2 border-b border-hairline px-3">
         <IconSearch className="text-muted" />
         <input
@@ -155,13 +157,18 @@ function PaletteDialog({
                 onMouseEnter={() => setCursor(i)}
                 onClick={() => choose(c)}
                 className={cx(
-                  "relative flex h-8 cursor-pointer items-center gap-3 px-3 text-sm",
-                  i === cursor ? "bg-raised text-text" : "text-muted",
+                  "relative mx-1.5 flex h-9 cursor-pointer items-center gap-3 rounded-control px-3 text-sm",
+                  i === cursor ? "text-text" : "text-muted",
                 )}
               >
-                {i === cursor && <span aria-hidden className="absolute inset-y-0 start-0 w-0.5 bg-sage" />}
-                <span className="truncate">{c.label}</span>
-                {c.hint && <span className="num ms-auto shrink-0 text-2xs text-muted">{c.hint}</span>}
+                {i === cursor && (
+                  <motion.span layoutId="palette-cursor" transition={SPRING.ui} aria-hidden
+                    className="absolute inset-0 rounded-control border border-hairline-strong bg-raised shadow-sheen">
+                    <span className="absolute bottom-2 start-0 top-2 w-[3px] rounded-e-sm bg-brass" />
+                  </motion.span>
+                )}
+                <span className="relative truncate">{c.label}</span>
+                {c.hint && <span className="num relative ms-auto shrink-0 text-2xs text-muted">{c.hint}</span>}
               </div>
             </li>
           );

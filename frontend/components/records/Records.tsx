@@ -78,12 +78,12 @@ export function RecordChip({ id, className }: { id: string; className?: string }
         type="button"
         onClick={() => open(id)}
         className={cx(
-          "num inline-flex h-5 items-center gap-1 border border-hairline-strong bg-bg px-1 text-2xs text-text",
-          "transition-colors duration-[120ms] hover:border-sage hover:text-sage",
+          "press num inline-flex h-5 items-center gap-1 rounded-control border border-hairline-strong bg-bg/70 px-1.5 text-2xs text-text",
+          "hover:border-brass/70 hover:bg-brass/8 hover:text-brass",
           className,
         )}
       >
-        <span aria-hidden className={cx("h-1.5 w-1.5", PREFIX_TONE[prefix] ?? "bg-muted")} />
+        <span aria-hidden className={cx("h-1.5 w-1.5 rounded-[1px]", PREFIX_TONE[prefix] ?? "bg-muted")} />
         {id}
       </button>
     </HoverCard>
@@ -167,9 +167,10 @@ function RecordDrawer({ id, source, onClose }: { id: string | null; source: Reco
             {links.length === 0 ? (
               <span className="text-sm text-muted">No citations of this record in the open case.</span>
             ) : (
-              <ul className="flex flex-col border-t border-hairline">
+              <ul className="flex flex-col gap-1.5">
                 {links.map((l, i) => (
-                  <li key={i} className="flex flex-col gap-0.5 border-b border-hairline py-1.5">
+                  <li key={i} className="relative flex flex-col gap-0.5 rounded-control border border-hairline bg-bg/50 px-3 py-2 ps-4">
+                    <span aria-hidden className="absolute bottom-2 start-0 top-2 w-[3px] rounded-e-sm bg-brass/70" />
                     <span className="text-xs text-muted">{l.where}</span>
                     {l.text && <span className="text-sm text-text">{l.text}</span>}
                   </li>

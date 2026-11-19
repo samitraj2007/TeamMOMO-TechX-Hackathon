@@ -30,8 +30,8 @@ export function Callout({
   const k = KIND[kind];
   return (
     <div role={kind === "refused" || kind === "danger" ? "alert" : undefined}
-      className={cx("relative border border-hairline ps-3.5 pe-3 py-2", TONE_TINT[k.tone], kind === "refused" && "hatch", className)}>
-      <span aria-hidden className={cx("absolute inset-y-0 start-0 w-0.5", TONE_BG[k.tone])} />
+      className={cx("sheet relative overflow-hidden rounded-panel border border-hairline ps-4 pe-3 py-2.5", TONE_TINT[k.tone], kind === "refused" && "hatch", className)}>
+      <span aria-hidden className={cx("absolute inset-y-0 start-0 w-[3px]", TONE_BG[k.tone])} />
       <div className={cx("flex items-center gap-2 text-2xs font-semibold uppercase tracking-[0.08em]", TONE_TEXT[k.tone])}>
         {k.icon}
         <span>{title ?? k.label}</span>

@@ -1,43 +1,50 @@
 @import "tailwindcss";
 
-/* Obsidian Ledger tokens. Frozen in UI step 2; see docs/UI_PLAN.md. */
+/* Obsidian Ledger tokens, revision 1. Keep in sync with lib/tokens.ts; see docs/UI_PLAN.md. */
 @theme {
-  --color-bg: #0a0e0c;
-  --color-surface: #0f1512;
-  --color-raised: #141c17;
-  --color-overlay: #19231d;
-  --color-hairline: #213028;
-  --color-hairline-strong: #2e4237;
-  --color-text: #d6e0d9;
-  --color-muted: #7b8b82;
-  --color-sage: #6e9b83;
-  --color-amber: #c9a24a;
+  --color-bg: #0b100d;
+  --color-surface: #111a14;
+  --color-raised: #17231b;
+  --color-overlay: #1d2b22;
+  --color-hairline: #24342a;
+  --color-hairline-strong: #33473a;
+  --color-text: #e4e8dd;
+  --color-muted: #97a496;
+  --color-sage: #7fa88e;
+  --color-amber: #cfa65a;
+  --color-brass: #cfa65a;
   --color-red: #b5524a;
   --color-red-text: #d27a70;
-  --color-model: #7c9db8;
-  --color-human: #c8b47a;
+  --color-model: #86a5bf;
+  --color-human: #d0bc86;
+  --color-teal: #1f4a44;
 
   /* Phase-0 aliases, removed when /case/[id] is rebuilt in step 3. */
-  --color-ink: #0a0e0c;
-  --color-panel: #0f1512;
-  --color-panel-2: #141c17;
-  --color-line: #213028;
-  --color-fg: #d6e0d9;
-  --color-faint: #6a7a71;
-  --color-clear: #6e9b83;
-  --color-review: #c9a24a;
+  --color-ink: #0b100d;
+  --color-panel: #111a14;
+  --color-panel-2: #17231b;
+  --color-line: #24342a;
+  --color-fg: #e4e8dd;
+  --color-faint: #97a496;
+  --color-clear: #7fa88e;
+  --color-review: #cfa65a;
   --color-approve: #b5524a;
-  --color-llm: #7c9db8;
+  --color-llm: #86a5bf;
 
-  --radius-xs: 1px;
-  --radius-sm: 2px;
-  --radius-md: 2px;
-  --radius-lg: 2px;
-  --radius-xl: 2px;
-  --radius-2xl: 2px;
-  --radius-3xl: 2px;
-  --radius-4xl: 2px;
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 3px;
+  --radius-lg: 6px;
+  --radius-xl: 6px;
+  --radius-2xl: 6px;
+  --radius-3xl: 6px;
+  --radius-4xl: 6px;
+  --radius-control: 3px;
+  --radius-panel: 6px;
+
   --shadow-*: initial;
+  --shadow-sheen: inset 0 1px 0 0 rgb(240 236 214 / 0.055);
+  --shadow-sheen-strong: inset 0 1px 0 0 rgb(240 236 214 / 0.09);
   --inset-shadow-*: initial;
   --drop-shadow-*: initial;
 
@@ -80,14 +87,34 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* App background only: static film grain and a faint 8px grid. */
+/* App background only: static film grain over two soft moss / deep-teal tints. No visible grid. */
 .app-backdrop {
   background-color: var(--color-bg);
   background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.03 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
-    linear-gradient(to right, rgb(110 155 131 / 0.04) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(110 155 131 / 0.04) 1px, transparent 1px);
-  background-size: 160px 160px, 8px 8px, 8px 8px;
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 0.97 0 0 0 0 0.9 0 0 0 0.03 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(1200px 700px at 12% -10%, rgb(31 74 68 / 0.28), transparent 60%),
+    radial-gradient(900px 600px at 95% 10%, rgb(52 72 44 / 0.22), transparent 65%);
+  background-attachment: fixed;
+}
+
+/* A sheet: moss tint within one hue family plus the top-edge highlight. */
+.sheet {
+  background-image: linear-gradient(180deg, rgb(255 250 230 / 0.018), transparent 40%);
+  box-shadow: var(--shadow-sheen);
+}
+
+/* Soft blurred glow placed behind an active element (see components/primitives/Surface.tsx). */
+.glow-brass {
+  background: radial-gradient(closest-side, rgb(207 166 90 / 0.22), transparent);
+  filter: blur(14px);
+}
+.glow-sage {
+  background: radial-gradient(closest-side, rgb(127 168 142 / 0.22), transparent);
+  filter: blur(14px);
+}
+.glow-red {
+  background: radial-gradient(closest-side, rgb(181 82 74 / 0.26), transparent);
+  filter: blur(14px);
 }
 
 .font-mono,
@@ -104,14 +131,27 @@ body {
   line-height: 1.7;
 }
 
+/* Brass focus ring: the single warm accent marks focus. */
 :focus-visible {
-  outline: 1px solid var(--color-sage);
-  outline-offset: 1px;
-  border-radius: 2px;
+  outline: 2px solid rgb(207 166 90 / 0.85);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* Press feedback on every control. */
+.press {
+  transition:
+    transform 120ms var(--ease-out),
+    background-color 120ms var(--ease-out),
+    border-color 120ms var(--ease-out),
+    color 120ms var(--ease-out);
+}
+.press:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 ::selection {
-  background: rgb(110 155 131 / 0.35);
+  background: rgb(207 166 90 / 0.3);
   color: var(--color-text);
 }
 
@@ -120,43 +160,46 @@ body {
   scrollbar-color: var(--color-hairline-strong) transparent;
 }
 
-/* Diagonal hairline hatch used for neutralised text and blocked states (a texture, not a decorative gradient). */
+/* Diagonal hatch for neutralised text and blocked states (a texture, not decoration). */
 .hatch {
   background-image: repeating-linear-gradient(135deg, rgb(181 82 74 / 0.22) 0 1px, transparent 1px 6px);
 }
 
 .hatch-muted {
-  background-image: repeating-linear-gradient(135deg, rgb(123 139 130 / 0.14) 0 1px, transparent 1px 6px);
+  background-image: repeating-linear-gradient(135deg, rgb(151 164 150 / 0.12) 0 1px, transparent 1px 6px);
 }
 
-/* Square range input (airlock scrubber). */
+/* Range input over a custom track (airlock scrubber): only the thumb is drawn. */
 .airlock-scrub {
   appearance: none;
-  height: 12px;
   background: transparent;
+  cursor: pointer;
 }
 .airlock-scrub::-webkit-slider-runnable-track {
-  height: 2px;
-  background: var(--color-hairline-strong);
+  height: 16px;
+  background: transparent;
 }
 .airlock-scrub::-moz-range-track {
-  height: 2px;
-  background: var(--color-hairline-strong);
+  height: 16px;
+  background: transparent;
 }
 .airlock-scrub::-webkit-slider-thumb {
   appearance: none;
-  width: 8px;
-  height: 12px;
-  margin-top: -5px;
-  border: 1px solid var(--color-sage);
-  border-radius: 0;
+  width: 10px;
+  height: 16px;
+  border: 1px solid var(--color-brass);
+  border-radius: 2px;
   background: var(--color-bg);
+  transition: transform 120ms var(--ease-out);
+}
+.airlock-scrub:active::-webkit-slider-thumb {
+  transform: scale(1.15);
 }
 .airlock-scrub::-moz-range-thumb {
-  width: 8px;
-  height: 12px;
-  border: 1px solid var(--color-sage);
-  border-radius: 0;
+  width: 10px;
+  height: 16px;
+  border: 1px solid var(--color-brass);
+  border-radius: 2px;
   background: var(--color-bg);
 }
 
@@ -190,5 +233,8 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  .press:active:not(:disabled) {
+    transform: none;
   }
 }

@@ -11,6 +11,13 @@ export const EASE = {
   linear: "linear" as const,
 };
 
+/** Spring presets: `ui` for controls and indicators, `soft` for cards and panes, `snappy` for presses. */
+export const SPRING = {
+  ui: { type: "spring", stiffness: 520, damping: 40, mass: 0.6 },
+  soft: { type: "spring", stiffness: 260, damping: 30, mass: 0.8 },
+  snappy: { type: "spring", stiffness: 700, damping: 35 },
+} as const;
+
 export const STAGGER = { timelineStep: 0.09, serviceCall: 0.04, factRow: 0.08 } as const;
 
 /** Airlock phases in seconds at 1x speed; total 6.0 s. */
