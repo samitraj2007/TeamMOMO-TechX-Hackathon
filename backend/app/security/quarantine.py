@@ -81,6 +81,7 @@ class QuarantineResult(BaseModel):
     classifier: list[GuardVerdict]
     spans: list[Span]
     duration_ms: int
+    classifier_ms: int
 
 
 def _language(text: str) -> Literal["en", "ar", "mixed", "unknown"]:
@@ -117,11 +118,14 @@ def quarantine(fields: dict[str, str | None], guard: Guard) -> QuarantineResult:
     present = {k: v for k, v in fields.items() if k in FREE_TEXT_FIELDS and v}
     hits: list[RegexHit] = []
     verdicts: list[GuardVerdict] = []
+    guard_s = 0.0
     for name, raw in present.items():
         field_hits, _, decoded = scan_field(raw, name)
         hits.extend(field_hits)
         guard_input = normalise(raw).text + "".join(f"\n{d}" for d in decoded)
+        g0 = time.perf_counter()
         verdicts.append(guard.classify(name, guard_input))
+        guard_s += time.perf_counter() - g0
 
     signals = [InjectionSignal(code=h.code, field=h.field, layer="CODE") for h in hits]
     signals = list({(s.code, s.field): s for s in signals}.values())
@@ -148,4 +152,4 @@ def quarantine(fields: dict[str, str | None], guard: Guard) -> QuarantineResult:
     return QuarantineResult(
         memo_facts=facts, regex_flagged=bool(hits), classifier_verdict=classifier_verdict, classifier=verdicts,
         spans=[Span(field=h.field, code=h.code, start=h.start, end=h.end) for h in hits if h.end > h.start],
-        duration_ms=round((time.perf_counter() - t0) * 1000))
+        duration_ms=round((time.perf_counter() - t0) * 1000), classifier_ms=round(guard_s * 1000))
