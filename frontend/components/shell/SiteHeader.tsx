@@ -49,6 +49,7 @@ function Chip({ tone, title, children }: { tone: Tone; title?: string; children:
 
 export function SiteHeader({ onOpenPalette }: { onOpenPalette: () => void }) {
   const path = useHydratedPath();
+  const quiet = path === "/";
   const scrolled = useScrolled();
   const { lang, setLang, demoSpeed, setDemoSpeed } = usePrefs();
   const health = useHealth();
@@ -83,12 +84,12 @@ export function SiteHeader({ onOpenPalette }: { onOpenPalette: () => void }) {
       )}
     >
       <Link href="/" className="flex shrink-0 items-center gap-2 pe-1">
-        <Mascot state="idle" size={28} avatar />
+        {!quiet && <Mascot state="idle" size={28} avatar />}
         <span className="text-sm font-medium tracking-tight text-text">GulfHorizon</span>
-        <span className="num hidden text-2xs text-muted xl:inline">Triage Console</span>
+        {!quiet && <span className="num hidden text-2xs text-muted xl:inline">Triage Console</span>}
       </Link>
 
-      <nav aria-label="Sections" className="flex h-full shrink-0 items-stretch">
+      <nav aria-label="Sections" className={cx("flex h-full shrink-0 items-stretch", quiet && "ms-auto")}>
         {NAV.map((item) => {
           const active = path === item.href || path.startsWith(`${item.href}/`);
           return (
@@ -114,15 +115,18 @@ export function SiteHeader({ onOpenPalette }: { onOpenPalette: () => void }) {
         })}
       </nav>
 
-      <button
-        type="button"
-        onClick={onOpenPalette}
-        className="press mx-auto flex h-8 min-w-0 max-w-md flex-1 items-center gap-2 rounded-search border border-hairline bg-surface px-3 text-start text-sm text-muted shadow-sheen hover:border-hairline-strong"
-      >
-        <IconSearch size={14} />
-        <span className="truncate">Search cases, transactions... Ctrl K</span>
-      </button>
+      {!quiet && (
+        <button
+          type="button"
+          onClick={onOpenPalette}
+          className="press mx-auto flex h-8 min-w-0 max-w-md flex-1 items-center gap-2 rounded-search border border-hairline bg-surface px-3 text-start text-sm text-muted shadow-sheen hover:border-hairline-strong"
+        >
+          <IconSearch size={14} />
+          <span className="truncate">Search cases, transactions... Ctrl K</span>
+        </button>
+      )}
 
+      {!quiet && (
       <div className="flex shrink-0 items-center gap-2">
         <Chip tone={backend.tone}>{backend.text}</Chip>
         <Chip tone={provider.tone} title={provider.title}>{provider.text}</Chip>
@@ -143,6 +147,7 @@ export function SiteHeader({ onOpenPalette }: { onOpenPalette: () => void }) {
           options={[{ value: "0.5", label: "0.5×" }, { value: "1", label: "1×" }, { value: "2", label: "2×" }]}
         />
       </div>
+      )}
     </header>
   );
 }
