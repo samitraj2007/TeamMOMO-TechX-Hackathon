@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #0b0f14;
+  --color-panel: #111821;
+  --color-panel-2: #16202b;
+  --color-line: #233140;
+  --color-fg: #d9e1ea;
+  --color-muted: #8796a8;
+  --color-faint: #5b6878;
+  --color-clear: #3ecf8e;
+  --color-review: #f5a524;
+  --color-approve: #f2555a;
+  --color-llm: #8ab4ff;
+  --color-human: #e6c36a;
+
+  --font-sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, "Noto Sans Arabic", Tahoma, sans-serif;
+  --font-mono: "Cascadia Mono", ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+html,
+body {
+  background: var(--color-ink);
+  color: var(--color-fg);
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-llm);
+  outline-offset: 2px;
+}
+
+@keyframes momo-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes momo-sweep {
+  from {
+    background-size: 0% 100%;
+  }
+  to {
+    background-size: 100% 100%;
+  }
+}
+
+.reveal {
+  animation: momo-in 320ms ease-out both;
+}
+
+.hostile-span {
+  background-color: transparent;
+  background-image: linear-gradient(rgba(242, 85, 90, 0.35), rgba(242, 85, 90, 0.35));
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  animation: momo-sweep 700ms ease-out both;
+  box-shadow: inset 0 -2px 0 var(--color-approve);
+  color: #ffd9da;
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .hostile-span {
+    animation: none;
+  }
+}

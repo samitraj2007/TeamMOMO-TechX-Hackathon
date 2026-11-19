@@ -25,7 +25,7 @@ class Settings(BaseSettings):
 
     db_path: str = "backend/data/gulf_horizon_mini.sqlite"
     cache_path: str = "backend/data/llm_cache.json"
-    cors_origins: str = "http://localhost:3000"
+    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
 
     def resolve(self, p: str) -> Path:
         path = Path(p)
