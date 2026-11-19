@@ -1,35 +1,35 @@
 @import "tailwindcss";
 
-/* Obsidian Ledger tokens, revision 1. Keep in sync with lib/tokens.ts; see docs/UI_PLAN.md. */
+/* Warm paper surfaces. Green is the accent, not the background. Keep in sync with lib/tokens.ts. */
 @theme {
-  --color-bg: #0b100d;
-  --color-surface: #111a14;
-  --color-raised: #17231b;
-  --color-overlay: #1d2b22;
-  --color-hairline: #24342a;
-  --color-hairline-strong: #33473a;
-  --color-text: #e4e8dd;
-  --color-muted: #97a496;
-  --color-sage: #7fa88e;
-  --color-amber: #cfa65a;
-  --color-brass: #cfa65a;
+  --color-bg: #f3f4f1;
+  --color-surface: #ffffff;
+  --color-raised: #f7f8f6;
+  --color-overlay: #ffffff;
+  --color-hairline: #e4e6e1;
+  --color-hairline-strong: #d5d8d2;
+  --color-text: #1c211e;
+  --color-muted: #5c6560;
+  --color-sage: #1f7a4d;
+  --color-amber: #7a5b24;
+  --color-brass: #7a5b24;
   --color-red: #b5524a;
-  --color-red-text: #d27a70;
-  --color-model: #86a5bf;
-  --color-human: #d0bc86;
+  --color-red-text: #9c3b34;
+  --color-model: #3d5f7a;
+  --color-human: #7a6230;
   --color-teal: #1f4a44;
 
-  /* Phase-0 aliases, removed when /case/[id] is rebuilt in step 3. */
-  --color-ink: #0b100d;
-  --color-panel: #111a14;
-  --color-panel-2: #17231b;
-  --color-line: #24342a;
-  --color-fg: #e4e8dd;
-  --color-faint: #97a496;
-  --color-clear: #7fa88e;
-  --color-review: #cfa65a;
+  /* Phase-0 aliases, kept so older class names follow the paper palette. */
+  --color-ink: #1c211e;
+  --color-panel: #ffffff;
+  --color-panel-2: #f7f8f6;
+  --color-line: #e4e6e1;
+  --color-fg: #1c211e;
+  --color-faint: #5c6560;
+  --color-clear: #1f7a4d;
+  --color-review: #7a5b24;
   --color-approve: #b5524a;
-  --color-llm: #86a5bf;
+  --color-llm: #3d5f7a;
 
   --radius-xs: 2px;
   --radius-sm: 3px;
@@ -41,10 +41,11 @@
   --radius-4xl: 6px;
   --radius-control: 3px;
   --radius-panel: 6px;
+  --radius-search: 12px;
 
   --shadow-*: initial;
-  --shadow-sheen: inset 0 1px 0 0 rgb(240 236 214 / 0.055);
-  --shadow-sheen-strong: inset 0 1px 0 0 rgb(240 236 214 / 0.09);
+  --shadow-sheen: inset 0 1px 0 0 rgb(255 255 255 / 0.9);
+  --shadow-sheen-strong: inset 0 1px 0 0 rgb(255 255 255 / 1);
   --inset-shadow-*: initial;
   --drop-shadow-*: initial;
 
@@ -76,7 +77,7 @@
 html {
   background: var(--color-bg);
   color: var(--color-text);
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {
@@ -87,19 +88,25 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* App background only: static film grain over two soft moss / deep-teal tints. No visible grid. */
+/* App background: slow grain drift and a faint contour. Reduced motion freezes it. */
 .app-backdrop {
   background-color: var(--color-bg);
   background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 0.97 0 0 0 0 0.9 0 0 0 0.03 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
-    radial-gradient(1200px 700px at 12% -10%, rgb(31 74 68 / 0.28), transparent 60%),
-    radial-gradient(900px 600px at 95% 10%, rgb(52 72 44 / 0.22), transparent 65%);
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.11 0 0 0 0 0.13 0 0 0 0 0.11 0 0 0 0.045 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(1000px 560px at 0% -10%, rgb(28 33 30 / 0.045), transparent 62%),
+    radial-gradient(720px 420px at 100% 0%, rgb(31 122 77 / 0.05), transparent 58%);
   background-attachment: fixed;
+  animation: backdrop-drift 48s linear infinite;
 }
 
-/* A sheet: moss tint within one hue family plus the top-edge highlight. */
+@keyframes backdrop-drift {
+  from { background-position: 0 0, 0 0, 0 0; }
+  to { background-position: 180px 90px, 0 0, 0 0; }
+}
+
+/* A sheet: white top-edge highlight, no drop shadow. */
 .sheet {
-  background-image: linear-gradient(180deg, rgb(255 250 230 / 0.018), transparent 40%);
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.72), transparent 42%);
   box-shadow: var(--shadow-sheen);
 }
 
@@ -220,9 +227,9 @@ body {
 }
 
 .hostile-span {
-  background: rgb(181 82 74 / 0.28);
+  background: rgb(156 59 52 / 0.12);
   box-shadow: inset 0 -1px 0 var(--color-red);
-  color: #f1d3cf;
+  color: var(--color-red-text);
 }
 
 @media (prefers-reduced-motion: reduce) {

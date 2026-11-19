@@ -4,8 +4,10 @@ import { ConsoleFrame } from "@/components/shell/ConsoleFrame";
 
 export default function ConsoleLayout({ children }: LayoutProps<"/">) {
   return (
-    <Suspense fallback={<LoadingState label="Opening the console" className="m-6" />}>
-      <ConsoleFrame>{children}</ConsoleFrame>
-    </Suspense>
+    <div className="flex h-[calc(100svh-56px)] min-h-0 flex-col overflow-hidden">
+      <Suspense fallback={<LoadingState label="Opening the console" className="m-6" />}>
+        <ConsoleFrame>{children}</ConsoleFrame>
+      </Suspense>
+    </div>
   );
 }

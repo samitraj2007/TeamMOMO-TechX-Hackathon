@@ -104,8 +104,11 @@ flowchart LR
 - **Queue:** KPI strip (4 tiles with count-ups) above a toolbar (lane segmented tabs, rule, amount band, search) above a dense table. Each row has a left status bar in its route colour and a demo-tag pin.
 - **Transactions:** a toolbar (search; alerted / not alerted / all segments; currency; amount range; sort) over a virtual-scroll table of all 1,000 rows from a single `limit=1000` call. Each row has a "Run" action. Rows without a rule-raised alert get a "Not alerted by rules" tag.
 
+## Tokens (revision 2)
+Green is the accent, not the field. Surfaces are warm paper (bg `#F3F4F1`, surface `#FFFFFF`, raised `#F7F8F6`). Text is near-black `#1C211E`. Sage `#1F7A4D` is the only green, for the active mark, positive status and CODE. Brass, model, human and red-text are darkened so they stay AA on white. The backdrop grain drifts slowly and stops under `prefers-reduced-motion`. Console controls stay 6px / 3px; the header search and the landing use 12px.
+
 ## Tokens (revision 1)
-- **Colours:** deep forest and moss with a slight warm undertone.
+- **Colours:** deep forest and moss with a slight warm undertone. Superseded by revision 2 above.
   - Base: bg `#0B100D`, surface `#111A14`, raised `#17231B`, overlay `#1D2B22`, hairline `#24342A`, hairline-strong `#33473A`.
   - Text: warm off-white `#E4E8DD`; muted sage-grey `#97A496`.
   - One warm accent, brass `#CFA65A`, for risk, review and focus rings.

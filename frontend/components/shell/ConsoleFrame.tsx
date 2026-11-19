@@ -1,22 +1,20 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { createContext, useContext, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useContext, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   IconAudit, IconCases, IconEval, IconIngest, IconQueue, IconTransactions,
 } from "@/components/icons";
 import { Banner } from "@/components/primitives";
 import { apiRecordSource, RecordProvider } from "@/components/records/Records";
 import { t } from "@/lib/i18n";
-import type { Tone } from "@/lib/labels";
 import { usePrefs } from "@/lib/prefs";
-import { useCases, useHealth, useVerify } from "@/lib/queries";
+import { useCases, useHealth } from "@/lib/queries";
 import type { Role } from "@/lib/types";
 import { AppShell } from "./AppShell";
-import { CommandPalette, useCommandHotkey, type Command } from "./CommandPalette";
 import type { NavItem } from "./nav";
 import type { PaneTab } from "./PaneTabs";
-import type { StatusInfo } from "./StatusBar";
+import { useOpenPalette } from "./SiteFrame";
 
 const RoleCtx = createContext<{ role: Role; setRole: (r: Role) => void }>({ role: "ANALYST", setRole: () => {} });
 
@@ -41,15 +39,12 @@ export function ConsoleFrame({ children }: { children: ReactNode }) {
   const path = useHydratedPath();
   const router = useRouter();
   const health = useHealth();
-  const verify = useVerify();
   const cases = useCases(false);
   const [role, setRole] = useState<Role>("ANALYST");
   const [rail, setRail] = useState(false);
   const [sidebar, setSidebar] = useState(true);
-  const [palette, setPalette] = useState(false);
   const [closed, setClosed] = useState<string[]>([]);
-  const openPalette = useMemo(() => () => setPalette(true), []);
-  useCommandHotkey(openPalette);
+  const openPalette = useOpenPalette();
 
   const caseId = path.match(/^\/case\/([^/]+)/)?.[1];
   const section =
@@ -93,44 +88,12 @@ export function ConsoleFrame({ children }: { children: ReactNode }) {
   const activeTab = caseId && tabs.some((tab) => tab.id === caseId) ? caseId : undefined;
 
   const h = health.data;
-  const provider: { text: string; tone: Tone } = health.isError
-    ? { text: "unreachable", tone: "red" }
-    : !h
-      ? { text: "checking", tone: "muted" }
-      : h.demo_mode === "replay"
-        ? { text: "Replay (cache only)", tone: "amber" }
-        : h.investigator_live
-          ? { text: "Groq live", tone: "sage" }
-          : { text: h.backup_model ? "Backup" : "Models offline", tone: "amber" };
-  const status: StatusInfo = {
-    backend: health.isError ? "down" : h ? "ok" : "checking",
-    provider: provider.text,
-    providerTone: provider.tone,
-    cases: cases.data?.length ?? null,
-    chain: verify.data
-      ? { ok: verify.data.ok, head: verify.data.head_record_id, entries: verify.data.entries, headHash: verify.data.head_hash }
-      : null,
-  };
-
-  const commands: Command[] = [
-    { id: "go-queue", group: "Navigate", label: "Open queue", run: () => router.push("/queue") },
-    { id: "go-txn", group: "Navigate", label: "Open transactions", run: () => router.push("/transactions") },
-    { id: "go-audit", group: "Navigate", label: "Open audit", run: () => router.push("/audit") },
-    ...demoCases.map((c) => ({
-      id: c.alert_id,
-      group: "Cases",
-      label: `${c.alert_id} · ${c.title}`,
-      hint: c.demo_tag ?? undefined,
-      keywords: `${c.txn_id} ${c.payee_name ?? ""} ${c.demo_tag ?? ""}`,
-      run: () => router.push(`/case/${c.alert_id}`),
-    })),
-  ];
 
   return (
     <RoleCtx.Provider value={{ role, setRole }}>
       <RecordProvider source={apiRecordSource}>
         <AppShell
-          className="h-svh"
+          className="h-full"
           ribbon={ribbon}
           tree={tree}
           activeId={caseId ?? section}
@@ -147,7 +110,6 @@ export function ConsoleFrame({ children }: { children: ReactNode }) {
             setClosed((c) => [...c, id]);
             if (id === caseId) router.push("/queue");
           }}
-          status={status}
           role={role}
           onRoleChange={setRole}
           banner={h?.demo_mode === "replay" ? (
@@ -156,12 +118,6 @@ export function ConsoleFrame({ children }: { children: ReactNode }) {
         >
           {children}
         </AppShell>
-        <CommandPalette open={palette} onClose={() => setPalette(false)} commands={commands} dynamic={(q) => {
-          const id = q.toUpperCase();
-          if (/^ALT-\d+$/.test(id)) return [{ id: `open-${id}`, group: "From your input", label: `Open case ${id}`, run: () => router.push(`/case/${id}`) }];
-          if (/^TXN-\d{5,6}$/.test(id)) return [{ id: `find-${id}`, group: "From your input", label: `Find ${id} in transactions`, run: () => router.push(`/transactions?q=${id}`) }];
-          return [];
-        }} />
       </RecordProvider>
     </RoleCtx.Provider>
   );

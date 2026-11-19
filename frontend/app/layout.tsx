@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SiteFrame } from "@/components/shell/SiteFrame";
 import { geist, jetbrainsMono, plexArabic } from "@/lib/fonts";
 import { Providers } from "./providers";
 import "./globals.css";
@@ -12,7 +13,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${geist.variable} ${jetbrainsMono.variable} ${plexArabic.variable} h-full`}>
       <body className="app-backdrop min-h-full flex flex-col">
-        <Providers>{children}</Providers>
+        <Providers>
+          <SiteFrame>{children}</SiteFrame>
+        </Providers>
       </body>
     </html>
   );

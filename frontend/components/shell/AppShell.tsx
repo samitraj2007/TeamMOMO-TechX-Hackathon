@@ -9,7 +9,7 @@ import type { NavItem } from "./nav";
 import { PaneTabs, type PaneTab } from "./PaneTabs";
 import { Ribbon } from "./Ribbon";
 import { SidebarTree } from "./SidebarTree";
-import { StatusBar, type StatusInfo } from "./StatusBar";
+import { StatusBar } from "./StatusBar";
 
 /**
  * Presentational frame: floating rail, sidebar tree, pane tabs over the workspace, and a status bar.
@@ -29,7 +29,6 @@ export function AppShell({
   activeTab,
   onSelectTab,
   onCloseTab,
-  status,
   role,
   onRoleChange,
   statusExtra,
@@ -51,7 +50,6 @@ export function AppShell({
   activeTab?: string;
   onSelectTab: (id: string) => void;
   onCloseTab?: (id: string) => void;
-  status: StatusInfo;
   role: Role;
   onRoleChange: (r: Role) => void;
   statusExtra?: ReactNode;
@@ -80,7 +78,7 @@ export function AppShell({
           </div>
         </div>
       </div>
-      <StatusBar status={status} role={role} onRoleChange={onRoleChange} extra={statusExtra} />
+      <StatusBar role={role} onRoleChange={onRoleChange} extra={statusExtra} />
     </div>
   );
 }

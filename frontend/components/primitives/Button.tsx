@@ -5,9 +5,9 @@ export type ButtonVariant = "solid" | "outline" | "ghost" | "danger" | "accent";
 export type ButtonSize = "sm" | "md";
 
 const VARIANT: Record<ButtonVariant, string> = {
-  solid: "border-sage bg-sage text-bg hover:bg-[#8fb89d] hover:border-[#8fb89d]",
+  solid: "border-sage bg-sage text-bg hover:bg-[#186640] hover:border-[#186640]",
   accent: "border-brass/80 bg-brass/15 text-brass hover:bg-brass/25",
-  outline: "border-hairline-strong bg-raised/40 text-text hover:bg-raised hover:border-[#405647]",
+  outline: "border-hairline-strong bg-raised/40 text-text hover:bg-raised hover:border-[#C5C8C2]",
   ghost: "border-transparent bg-transparent text-muted hover:bg-raised hover:text-text",
   danger: "border-red/80 bg-red/12 text-red-text hover:bg-red/22",
 };

@@ -16,9 +16,8 @@ import {
 } from "@/components/primitives";
 import { RecordChip, RecordChips, RecordProvider } from "@/components/records/Records";
 import { AppShell } from "@/components/shell/AppShell";
-import { CommandPalette, useCommandHotkey, type Command } from "@/components/shell/CommandPalette";
+import { CommandPalette, type Command } from "@/components/shell/CommandPalette";
 import type { NavItem } from "@/components/shell/nav";
-import type { StatusInfo } from "@/components/shell/StatusBar";
 import { Workspace } from "@/components/shell/Workspace";
 import { ApiError } from "@/lib/api";
 import { contrast } from "@/lib/contrast";
@@ -176,9 +175,9 @@ function Colour() {
                 <span className="num truncate text-2xs text-muted">{c.hex}</span>
               </span>
               <span className="truncate text-xs text-muted">{c.use}</span>
-              <span className="text-end"><Ratio fg={c.hex} bg="#0B100D" /></span>
-              <span className="text-end"><Ratio fg={c.hex} bg="#111A14" /></span>
-              <span className="text-end"><Ratio fg={c.hex} bg="#17231B" /></span>
+              <span className="text-end"><Ratio fg={c.hex} bg={SURFACES[0].hex} /></span>
+              <span className="text-end"><Ratio fg={c.hex} bg={SURFACES[1].hex} /></span>
+              <span className="text-end"><Ratio fg={c.hex} bg={SURFACES[2].hex} /></span>
             </div>
           ))}
         </Panel>
@@ -430,7 +429,6 @@ function ShellDemo() {
   const [palette, setPalette] = useState(false);
   const [last, setLast] = useState("nothing yet");
   const openPalette = useCallback(() => setPalette(true), []);
-  useCommandHotkey(openPalette);
 
   const nav = (id: string, label: string, icon: ReactNode, meta?: ReactNode): NavItem => ({ id, label, icon, meta, onSelect: () => setActive(id) });
   const ribbon = [
@@ -444,7 +442,6 @@ function ShellDemo() {
     nav("audit", t("audit", lang), <IconAudit size={14} />),
     nav("eval", t("eval", lang), <IconEval size={14} />),
   ];
-  const status: StatusInfo = { backend: "ok", provider: "Groq live", providerTone: "sage", cases: 143, chain: { ok: true, head: "AUD-F0418", entries: 418, headHash: HEAD } };
   const commands: Command[] = [
     { id: "go-queue", group: "Navigate", label: "Open queue", run: () => setLast("Open queue") },
     { id: "go-txn", group: "Navigate", label: "Open transactions", run: () => setLast("Open transactions") },
@@ -462,7 +459,7 @@ function ShellDemo() {
   };
 
   return (
-    <Section id="shell" title="App shell" note={<>Collapsible rail, animated tabs, draggable and resizable panes, EN/AR and demo speed in the status bar, Ctrl+K. <FixtureLabel /></>}>
+    <Section id="shell" title="App shell" note={<>Collapsible rail, animated tabs, draggable and resizable panes. Language, demo speed and live status sit in the site header. <FixtureLabel /></>}>
       <div className="sheet h-[620px] overflow-hidden rounded-panel border border-hairline-strong bg-bg/80">
         <AppShell
           className="h-full"
@@ -481,7 +478,6 @@ function ShellDemo() {
             setTabs((ts) => ts.filter((x) => x.id !== id));
             if (tab === id) setTab("queue");
           }}
-          status={status}
           role={role}
           onRoleChange={setRole}
         >

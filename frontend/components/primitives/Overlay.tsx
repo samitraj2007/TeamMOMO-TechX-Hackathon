@@ -50,7 +50,7 @@ export function Drawer({
           <>
             <motion.div
               key="scrim"
-              className="fixed inset-0 z-40 bg-bg/60"
+              className="fixed inset-0 z-40 bg-[#1C211E]/40"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
