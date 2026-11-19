@@ -1,0 +1,16 @@
+---
+description: MOMO Sentinel non-negotiable engineering and safety rules
+alwaysApply: true
+---
+
+Follow RULES.md at the repo root. Summary:
+
+- Policy/threshold decisions are pure Python in backend/app/policy; no LLM/HTTP imports there.
+- Raw free text (memos, names, device labels, KYC notes, tool output) never enters an investigator prompt; only typed MemoFacts do.
+- The LLM has no block/release/file/commit capability; it may only make a route stricter. Strictest route wins: PENDING_APPROVAL > NEEDS_REVIEW > AUTO_CLEAR.
+- Fail closed: any LLM/tool failure routes to NEEDS_REVIEW or stricter.
+- Model names only from env: GROQ_MODEL_MAIN, GROQ_MODEL_LIGHT, GROQ_MODEL_GUARD.
+- All LLM calls go through the cache; DEMO_MODE=replay serves cache only. Tests never hit the network.
+- Never weaken tests. No new dependencies without approval (docs/DEPENDENCIES.md). Never commit secrets.
+- Synthetic data and fictional watchlist names only.
+- Small steps, run and test each, commit per step.
