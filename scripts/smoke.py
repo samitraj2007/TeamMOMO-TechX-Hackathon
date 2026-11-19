@@ -94,6 +94,14 @@ def main() -> int:
                        {"decision": "APPROVE", "action": "HOLD_AND_BLOCK", "reason": "smoke test approval"})
     check("officer approval commits", status == 200 and dec.get("resolution") is not None, str(status))
 
+    print("Audit log:")
+    _, trail = call(base, "GET", f"/cases/{tags['D']}/audit")
+    kinds = [e["kind"] for e in trail if e["kind"] != "STEP"]
+    check("refusal, decision and commit recorded", kinds == ["COMMIT_REFUSED", "DECISION", "COMMIT"], str(kinds))
+    _, v = call(base, "GET", "/audit/verify")
+    check(f"hash chain verifies ({v.get('entries')} entries)", v.get("ok") is True and v.get("entries", 0) > 0,
+          str(v.get("reason")))
+
     call(base, "POST", "/demo/reset")
     print("RESULT:", "ALL PASS" if not failures else f"{len(failures)} FAILED: {failures}")
     return 1 if failures else 0

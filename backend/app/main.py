@@ -1,7 +1,7 @@
 import threading
 from typing import Literal
 
-from fastapi import Depends, FastAPI, HTTPException, Path, Request
+from fastapi import Depends, FastAPI, HTTPException, Path, Query, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -9,6 +9,8 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from backend.app.agents.cache import JsonCache
 from backend.app.agents.investigator import Investigator, build_investigator
 from backend.app.config import get_settings
+from backend.app import audit
+from backend.app.audit import AuditEntry, AuditVerify
 from backend.app.db import connect, ensure_seeded
 from backend.app.ingest import MAX_BODY_BYTES, IngestIn
 from backend.app.ingest import store as store_ingested
@@ -226,6 +228,11 @@ def decide_case(alert_id: str, body: DecisionIn, conn=Depends(get_conn)):
     officer_only = route == Route.PENDING_APPROVAL or facts["high_value"] or facts["watchlist_hit"] \
         or action == "HOLD_AND_BLOCK"
     if officer_only and body.role != "COMPLIANCE_OFFICER":
+        with _db_lock:
+            audit.append(conn, alert_id, "DECISION_REFUSED", "HUMAN", {
+                "user": body.actor, "role": body.role, "decision": body.decision, "action": action,
+                "refusal": "OFFICER_REQUIRED"})
+            conn.commit()
         raise HTTPException(403, "High-value, watchlist and blocking decisions require a compliance officer")
     override = is_override(route, body.decision, action)
     with _db_lock:
@@ -262,7 +269,8 @@ def commit(alert_id: str, body: CommitIn, conn=Depends(get_conn)):
 
 
 RECORD_TABLES = {"TXN": "transactions", "CUS": "customers", "DEV": "devices", "WL": "watchlist",
-                 "VEL": "velocity_logs", "ALT": "alerts", "APR": "approvals", "RES": "resolutions"}
+                 "VEL": "velocity_logs", "ALT": "alerts", "APR": "approvals", "RES": "resolutions",
+                 "AUD": "audit_log"}
 EVAL_LABEL_COLUMNS = ("is_fraud", "scenario", "expected_route", "injection_family", "demo_tag")
 
 
@@ -295,7 +303,20 @@ def get_report(alert_id: str, conn=Depends(get_conn)):
         raise HTTPException(409, "Run the case before requesting its report")
     res = conn.execute("SELECT * FROM resolutions WHERE alert_id = ? ORDER BY record_id DESC LIMIT 1",
                        (alert_id,)).fetchone()
-    return build_report(conn, run_result, latest_approval(conn, alert_id), Resolution(**dict(res)) if res else None)
+    return build_report(conn, run_result, latest_approval(conn, alert_id), Resolution(**dict(res)) if res else None,
+                        audit.latest_for(conn, alert_id))
+
+
+@app.get("/cases/{alert_id}/audit", response_model=list[AuditEntry])
+def case_audit(alert_id: str, conn=Depends(get_conn)):
+    _load(conn, alert_id)
+    return audit.entries_for(conn, alert_id)
+
+
+@app.get("/audit/verify", response_model=AuditVerify)
+def audit_verify(anchor: str | None = Query(None, pattern=r"^[0-9a-f]{64}$"), conn=Depends(get_conn)):
+    """Recompute the whole chain. `anchor` is a head hash recorded earlier; it must still be in the chain."""
+    return audit.verify(conn, anchor)
 
 
 @app.post("/demo/reset")

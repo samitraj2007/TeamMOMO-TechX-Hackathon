@@ -15,7 +15,7 @@ from backend.tests.fakes import ScriptedBackend, make_investigator, respond
 THRESHOLD = 10_000.0
 KNOWN = {"TXN-00001", "CUS-0001", "WL-002"}
 TABLES = {"TXN": "transactions", "CUS": "customers", "DEV": "devices", "WL": "watchlist", "VEL": "velocity_logs",
-          "ALT": "alerts", "APR": "approvals", "RES": "resolutions"}
+          "ALT": "alerts", "APR": "approvals", "RES": "resolutions", "AUD": "audit_log"}
 
 
 class LowScore:

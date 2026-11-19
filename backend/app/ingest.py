@@ -10,6 +10,8 @@ from typing import Annotated, Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, StringConstraints
 
+from backend.app import audit
+
 MAX_BODY_BYTES = 32_768
 MEMO_MAX_CHARS = 10_000
 NAME_MAX_CHARS = 200
@@ -52,5 +54,9 @@ def store(conn: sqlite3.Connection, body: IngestIn) -> tuple[str, str]:
                  (vel_id, txn_id, body.customer_id, len(window), sum(r["amount"] for r in window),
                   sum(not r["payee_known"] for r in window)))
     conn.execute("INSERT INTO alerts VALUES (?,?,?,?)", (alert_id, txn_id, "R-INGEST", ts.isoformat()))
+    audit.append(conn, alert_id, "INGEST", "API", {
+        "txn_id": txn_id, "velocity_id": vel_id, "customer_id": body.customer_id, "device_id": body.device_id,
+        "amount": body.amount, "currency": body.currency, "channel": body.channel,
+        "memo_chars": len(body.memo or ""), "payee_name_chars": len(body.payee_name or "")})
     conn.commit()
     return alert_id, txn_id

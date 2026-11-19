@@ -7,6 +7,7 @@ argument cannot release a gated case.
 import sqlite3
 from datetime import datetime, timezone
 
+from backend.app import audit
 from backend.app.schemas import ACTION_SEVERITY, Action, Approval, Resolution, Route
 from backend.app.services.sanctions import check_sanctions_watchlist
 
@@ -68,6 +69,9 @@ def record_approval(conn: sqlite3.Connection, alert_id: str, actor: str, decisio
     conn.execute("INSERT INTO approvals (record_id, alert_id, actor, role, decision, action, override, reason, ts) "
                  "VALUES (?,?,?,?,?,?,?,?,?)",
                  (approval.record_id, alert_id, actor, role, decision, action, int(override), reason, approval.ts))
+    audit.append(conn, alert_id, "DECISION", "HUMAN", {
+        "approval_id": approval.record_id, "user": actor, "role": role, "decision": decision, "action": action,
+        "override": override, "reason": reason})
     conn.commit()
     return approval
 
@@ -86,6 +90,22 @@ def latest_resolution(conn: sqlite3.Connection, alert_id: str) -> Resolution | N
 
 def commit_case_resolution(conn: sqlite3.Connection, alert_id: str, route: Route, action: str,
                            threshold: float = 10_000.0) -> Resolution:
+    """Every attempt is audited, including refusals."""
+    try:
+        resolution = _commit(conn, alert_id, route, action, threshold)
+    except (ApprovalRequired, AlreadyResolved) as e:
+        audit.append(conn, alert_id, "COMMIT_REFUSED", "CODE", {
+            "route": route.value, "action": action, "refusal": type(e).__name__, "detail": str(e)})
+        conn.commit()
+        raise
+    audit.append(conn, alert_id, "COMMIT", "CODE", {
+        "resolution_id": resolution.record_id, "route": route.value, "action": action,
+        "approval_id": resolution.approval_id})
+    conn.commit()
+    return resolution
+
+
+def _commit(conn: sqlite3.Connection, alert_id: str, route: Route, action: str, threshold: float) -> Resolution:
     if latest_resolution(conn, alert_id) is not None:
         raise AlreadyResolved(f"{alert_id}: already resolved")
     facts = gated_facts(conn, alert_id, threshold)
@@ -106,5 +126,4 @@ def commit_case_resolution(conn: sqlite3.Connection, alert_id: str, route: Route
                             route=route, approval_id=approval.record_id if approved else None, ts=_now())
     conn.execute("INSERT INTO resolutions VALUES (?,?,?,?,?,?)",
                  (resolution.record_id, alert_id, action, route.value, resolution.approval_id, resolution.ts))
-    conn.commit()
     return resolution

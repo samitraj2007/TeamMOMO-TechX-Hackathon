@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel
 
 from backend.app.agents.investigator import InvestigatorResult
+from backend.app.audit import AuditEntry
 from backend.app.reports.verifier import SentenceCheck, verify_code_sentence, verify_text
 from backend.app.schemas import Approval, KycDevicesResult, Resolution, Route
 
@@ -77,13 +78,13 @@ def _reason_records(code: str, run: "CaseRun", alert_id: str, txn_id: str) -> li
 
 
 def build_report(conn: sqlite3.Connection, run: "CaseRun", approval: Approval | None = None,
-                 resolution: Resolution | None = None, audit_ref: str | None = None) -> Report:
+                 resolution: Resolution | None = None, audit_ref: AuditEntry | None = None) -> Report:
     alert_id, txn_id = run.alert_id, run.txn_id
     txn = dict(conn.execute("SELECT * FROM transactions WHERE record_id = ?", (txn_id,)).fetchone())
     alert = dict(conn.execute("SELECT * FROM alerts WHERE record_id = ?", (alert_id,)).fetchone())
     ev, mf, inv = run.evidence, run.quarantine.memo_facts, run.investigator
     known = set(ev.record_ids) | {alert_id} | ({approval.record_id} if approval else set()) \
-        | ({resolution.record_id} if resolution else set())
+        | ({resolution.record_id} if resolution else set()) | ({audit_ref.record_id} if audit_ref else set())
     sections: dict[str, list[SentenceCheck]] = {k: [] for k in (
         "case_summary", "subjects", "transaction_details", "red_flags", "screening", "quarantine_note",
         "recommendation", "human_decision", "audit_ref")}
@@ -184,7 +185,8 @@ def build_report(conn: sqlite3.Connection, run: "CaseRun", approval: Approval | 
 
     # 10. Audit
     if audit_ref:
-        say("audit_ref", f"Hash-chained audit log head for this case: {audit_ref}", alert_id)
+        say("audit_ref", f"Latest hash-chained audit entry for this case is {audit_ref.record_id} "
+                         f"({audit_ref.kind}, sha256 {audit_ref.hash})", audit_ref.record_id)
     else:
         say("audit_ref", "No audit chain reference recorded for this case", alert_id)
 

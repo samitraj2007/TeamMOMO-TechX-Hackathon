@@ -41,9 +41,18 @@ CREATE TABLE resolutions (
   record_id TEXT PRIMARY KEY, alert_id TEXT NOT NULL, action TEXT NOT NULL,
   route TEXT NOT NULL, approval_id TEXT, ts TEXT NOT NULL
 );
-PRAGMA user_version = 3;
+CREATE TABLE audit_log (
+  seq INTEGER PRIMARY KEY, record_id TEXT NOT NULL UNIQUE, ts TEXT NOT NULL, alert_id TEXT,
+  kind TEXT NOT NULL, actor TEXT NOT NULL, payload TEXT NOT NULL, prev_hash TEXT NOT NULL, hash TEXT NOT NULL
+);
+CREATE INDEX audit_log_alert ON audit_log(alert_id);
+CREATE TRIGGER audit_log_no_update BEFORE UPDATE ON audit_log
+BEGIN SELECT RAISE(ABORT, 'audit_log is append-only'); END;
+CREATE TRIGGER audit_log_no_delete BEFORE DELETE ON audit_log
+BEGIN SELECT RAISE(ABORT, 'audit_log is append-only'); END;
+PRAGMA user_version = 4;
 """
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 
 def connect(path: Path | None = None) -> sqlite3.Connection:

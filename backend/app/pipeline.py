@@ -7,6 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from backend.app import audit
 from backend.app.agents.investigator import (EvidenceRecord, Investigator, InvestigatorInput, InvestigatorResult,
                                              PolicyFacts)
 from backend.app.policy.engine import PolicyConfig, PolicyInput, decide
@@ -167,27 +168,37 @@ def run_case(conn: sqlite3.Connection, alert_id: str, guard: Guard, threshold: f
 
     t0 = time.perf_counter()
     alert, txn = load_case(conn, alert_id)
-    steps.append(Step(key="received", label="Alert received", actor="CODE", status="DONE", duration_ms=_ms(t0),
-                      summary=f"{alert['rule_id']} on {txn['record_id']} · {txn['amount']:,.2f} {txn['currency']}"))
+
+    def add(step: Step, **facts) -> None:
+        steps.append(step)
+        audit.append(conn, alert_id, "STEP", step.actor, {"step": step.key, "status": step.status,
+                                                          "summary": step.summary, "duration_ms": step.duration_ms,
+                                                          **facts})
+
+    add(Step(key="received", label="Alert received", actor="CODE", status="DONE", duration_ms=_ms(t0),
+             summary=f"{alert['rule_id']} on {txn['record_id']} · {txn['amount']:,.2f} {txn['currency']}"),
+        txn_id=txn["record_id"])
 
     q = quarantine(free_text_fields(conn, txn), guard)
     facts = q.memo_facts
     code_hits = [s for s in facts.injection_signals if s.layer == "CODE"]
-    steps.append(Step(key="quarantine_regex", label="Quarantine · deterministic filter", actor="CODE",
-                      status="FLAGGED" if code_hits else "DONE", duration_ms=q.duration_ms - q.classifier_ms,
-                      summary=f"{len(code_hits)} signal(s) across {len(facts.fields_scanned)} free-text fields"))
-    steps.append(Step(key="quarantine_classifier", label="Quarantine · injection classifier", actor="LLM",
-                      status={"INJECTION": "FLAGGED", "BENIGN": "DONE", "UNAVAILABLE": "DEGRADED"}[q.classifier_verdict],
-                      duration_ms=q.classifier_ms,
-                      summary=f"{q.classifier_verdict}" + (" (cached)" if q.classifier and all(v.cached for v in q.classifier) else "")))
+    add(Step(key="quarantine_regex", label="Quarantine · deterministic filter", actor="CODE",
+             status="FLAGGED" if code_hits else "DONE", duration_ms=q.duration_ms - q.classifier_ms,
+             summary=f"{len(code_hits)} signal(s) across {len(facts.fields_scanned)} free-text fields"),
+        signals=[f"{s.layer}:{s.field}:{s.code}" for s in code_hits], raw_hash=facts.raw_hash)
+    add(Step(key="quarantine_classifier", label="Quarantine · injection classifier", actor="LLM",
+             status={"INJECTION": "FLAGGED", "BENIGN": "DONE", "UNAVAILABLE": "DEGRADED"}[q.classifier_verdict],
+             duration_ms=q.classifier_ms,
+             summary=f"{q.classifier_verdict}" + (" (cached)" if q.classifier and all(v.cached for v in q.classifier) else "")))
 
     t0 = time.perf_counter()
     ev = _gather_evidence(conn, txn)
     bands = [s.band for s in (ev.sanctions_customer, ev.sanctions_payee) if s is not None]
     band = max(bands, key=BAND_ORDER.__getitem__) if bands else "CLEAR"
-    steps.append(Step(key="evidence", label="Evidence · KYC, devices, sanctions, velocity", actor="CODE",
-                      status="DONE" if ev.complete else "FAILED", duration_ms=_ms(t0),
-                      summary=f"{len(ev.record_ids)} records · watchlist {band}"))
+    add(Step(key="evidence", label="Evidence · KYC, devices, sanctions, velocity", actor="CODE",
+             status="DONE" if ev.complete else "FAILED", duration_ms=_ms(t0),
+             summary=f"{len(ev.record_ids)} records · watchlist {band}"),
+        record_ids=ev.record_ids)
 
     vel = ev.velocity
     cfg = PolicyConfig(aed_block_threshold=threshold)
@@ -206,18 +217,24 @@ def run_case(conn: sqlite3.Connection, alert_id: str, guard: Guard, threshold: f
                            code_reasons=[r.code for r in code_decision.reasons if r.route != Route.AUTO_CLEAR],
                            classifier_status=facts.classifier_status, evidence_complete=ev.complete))
     inv = investigator.run(inv_input)
-    steps.append(_investigator_step(inv))
+    add(_investigator_step(inv), investigator_status=inv.status, model=inv.model, provider=inv.provider,
+        prompt_version=inv.prompt_version, cached=inv.cached,
+        total_tokens=inv.usage.total_tokens if inv.usage else 0,
+        attempts=[f"{a.provider} {a.status}" for a in inv.attempts],
+        recommendation=inv.output.recommendation if inv.output else None,
+        cited=sorted({i for f in inv.output.findings for i in f.record_ids}) if inv.output else [])
 
     t0 = time.perf_counter()
     llm_checks = [] if inv.failed else verify_findings(inv, inv_input.record_ids(), identities(conn, ev.kyc, txn))
     llm_rejected = sum(not c.accepted for c in llm_checks)
     verifier_passed = None if inv.failed else inv.status == "ok" and llm_rejected == 0
-    steps.append(Step(key="verifier", label="Citation verifier", actor="CODE",
-                      status="SKIPPED" if inv.failed else ("FLAGGED" if not verifier_passed else "DONE"),
-                      duration_ms=_ms(t0),
-                      summary="no findings to verify" if inv.failed else
-                      f"{len(llm_checks) - llm_rejected}/{len(llm_checks)} model sentences cited"
-                      + (f" · {llm_rejected} rejected" if llm_rejected else "")))
+    add(Step(key="verifier", label="Citation verifier", actor="CODE",
+             status="SKIPPED" if inv.failed else ("FLAGGED" if not verifier_passed else "DONE"),
+             duration_ms=_ms(t0),
+             summary="no findings to verify" if inv.failed else
+             f"{len(llm_checks) - llm_rejected}/{len(llm_checks)} model sentences cited"
+             + (f" · {llm_rejected} rejected" if llm_rejected else "")),
+        verifier_passed=verifier_passed)
 
     t0 = time.perf_counter()
     decision = decide(dataclasses.replace(
@@ -227,9 +244,11 @@ def run_case(conn: sqlite3.Connection, alert_id: str, guard: Guard, threshold: f
         provider_failures=tuple(f"{a.provider} {a.status}" for a in inv.attempts) if inv.providers_exhausted else (),
         verifier_passed=verifier_passed,
     ), cfg)
-    steps.append(Step(key="policy", label="Policy engine (pure Python)", actor="CODE",
-                      status="FLAGGED" if decision.route != Route.AUTO_CLEAR else "DONE", duration_ms=_ms(t0),
-                      summary=f"{decision.route.value} · " + ", ".join(r.code for r in decision.reasons[:3])))
+    add(Step(key="policy", label="Policy engine (pure Python)", actor="CODE",
+             status="FLAGGED" if decision.route != Route.AUTO_CLEAR else "DONE", duration_ms=_ms(t0),
+             summary=f"{decision.route.value} · " + ", ".join(r.code for r in decision.reasons[:3])),
+        route=decision.route.value, code_route=code_decision.route.value,
+        reasons=[r.code for r in decision.reasons])
 
     existing = conn.execute("SELECT * FROM resolutions WHERE alert_id = ? ORDER BY record_id DESC LIMIT 1",
                             (alert_id,)).fetchone()
@@ -244,12 +263,14 @@ def run_case(conn: sqlite3.Connection, alert_id: str, guard: Guard, threshold: f
         gate = "AWAITING_APPROVAL"
     else:
         gate = "AWAITING_ANALYST"
-    steps.append(Step(key="gate", label="Human gate", actor="HUMAN" if gate.startswith("AWAITING") else "CODE",
-                      status="WAITING" if gate.startswith("AWAITING") else "DONE", duration_ms=0,
-                      summary={"AUTO_COMMITTED": "Auto-cleared and committed by code with reason codes",
-                               "AWAITING_ANALYST": "Escalated to analyst review - funds NOT released",
-                               "AWAITING_APPROVAL": "Held - compliance officer approval required before commit",
-                               "ALREADY_RESOLVED": "Case already resolved"}[gate]))
+    add(Step(key="gate", label="Human gate", actor="HUMAN" if gate.startswith("AWAITING") else "CODE",
+             status="WAITING" if gate.startswith("AWAITING") else "DONE", duration_ms=0,
+             summary={"AUTO_COMMITTED": "Auto-cleared and committed by code with reason codes",
+                      "AWAITING_ANALYST": "Escalated to analyst review - funds NOT released",
+                      "AWAITING_APPROVAL": "Held - compliance officer approval required before commit",
+                      "ALREADY_RESOLVED": "Case already resolved"}[gate]),
+        gate=gate, resolution_id=resolution.record_id if resolution else None)
+    conn.commit()
 
     run = CaseRun(alert_id=alert_id, txn_id=txn["record_id"], steps=steps, quarantine=q, evidence=ev,
                   investigator_input=inv_input, investigator=inv, code_route=code_decision.route,
@@ -257,6 +278,6 @@ def run_case(conn: sqlite3.Connection, alert_id: str, guard: Guard, threshold: f
                                        reasons=[ReasonOut(code=r.code, route=r.route, detail=r.detail)
                                                 for r in decision.reasons]),
                   resolution=resolution, gate=gate, total_ms=0)
-    run.report = build_report(conn, run, latest_approval(conn, alert_id), resolution)
+    run.report = build_report(conn, run, latest_approval(conn, alert_id), resolution, audit.latest_for(conn, alert_id))
     run.total_ms = _ms(t_total)
     return run
