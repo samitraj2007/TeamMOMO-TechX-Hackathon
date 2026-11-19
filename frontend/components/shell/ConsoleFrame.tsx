@@ -81,6 +81,7 @@ export function ConsoleFrame({ children }: { children: ReactNode }) {
     },
     link("audit", t("audit", lang), <IconAudit size={14} />, "/audit"),
     link("eval", t("eval", lang), <IconEval size={14} />, "/eval"),
+    link("ingest", t("ingest", lang), <IconIngest size={14} />, "/ingest"),
   ];
 
   const openIds = [caseId, ...demoCases.slice(0, 3).map((c) => c.alert_id)].filter((id): id is string => !!id && !closed.includes(id));

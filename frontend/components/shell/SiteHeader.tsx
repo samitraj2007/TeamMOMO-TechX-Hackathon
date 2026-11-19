@@ -18,6 +18,7 @@ const NAV = [
   { href: "/transactions", key: "transactions" },
   { href: "/audit", key: "audit" },
   { href: "/eval", key: "eval" },
+  { href: "/ingest", key: "ingest" },
 ] as const;
 
 const subscribePath = () => () => {};

@@ -25,6 +25,7 @@ export function SiteFrame({ children }: { children: ReactNode }) {
     { id: "go-txn", group: "Navigate", label: "Open transactions", run: () => router.push("/transactions") },
     { id: "go-audit", group: "Navigate", label: "Open audit", run: () => router.push("/audit") },
     { id: "go-eval", group: "Navigate", label: "Open eval", run: () => router.push("/eval") },
+    { id: "go-ingest", group: "Navigate", label: "Test your own case", run: () => router.push("/ingest") },
     ...(cases.data ?? []).map((c) => ({
       id: c.alert_id,
       group: "Cases",
