@@ -11,15 +11,33 @@ from backend.app.agents.cache import JsonCache, cache_key
 from backend.app.config import Settings
 
 PROMPT_VERSION = "guard-v1"
+# Prompt Guard 2 reads 512 tokens. 800 characters stays under that even for Arabic (~2 chars/token); the overlap
+# guarantees any phrase up to SEGMENT_OVERLAP characters long lands whole in at least one segment.
+SEGMENT_CHARS = 800
+SEGMENT_OVERLAP = 200
+
+
+def segment(text: str, size: int = SEGMENT_CHARS, overlap: int = SEGMENT_OVERLAP) -> list[str]:
+    if len(text) <= size:
+        return [text]
+    stride = size - overlap
+    out = []
+    for start in range(0, len(text), stride):
+        out.append(text[start:start + size])
+        if start + size >= len(text):
+            break
+    return out
 
 
 class GuardVerdict(BaseModel):
     field: str
-    status: Literal["ok", "unavailable", "cache_miss"]
+    status: Literal["ok", "unavailable", "cache_miss", "segment_cap"]
     score: float | None
     flagged: bool | None
     model: str
     cached: bool
+    segments_total: int = 1
+    segments_scanned: int = 1
 
 
 class GuardBackend(Protocol):
@@ -94,27 +112,56 @@ class Guard:
         self.backend = backend
         self.model = settings.groq_model_guard or "unset"
 
-    def classify(self, field: str, text: str) -> GuardVerdict:
-        threshold = self.settings.guard_threshold
+    def _score_one(self, text: str) -> tuple[Literal["ok", "unavailable", "cache_miss"], float | None, bool]:
         key = cache_key(self.model, PROMPT_VERSION, text)
         if (hit := self.cache.get(key)) is not None:
-            return GuardVerdict(field=field, status="ok", score=hit["score"], flagged=hit["score"] >= threshold,
-                                model=self.model, cached=True)
+            return "ok", hit["score"], True
         if self.settings.demo_mode == "replay":
-            return GuardVerdict(field=field, status="cache_miss", score=None, flagged=None, model=self.model,
-                                cached=False)
+            return "cache_miss", None, False
         if self.backend is None or not self.settings.groq_model_guard:
-            return GuardVerdict(field=field, status="unavailable", score=None, flagged=None, model=self.model,
-                                cached=False)
+            return "unavailable", None, False
         try:
             score = self.backend.score(text)
         except Exception:
-            return GuardVerdict(field=field, status="unavailable", score=None, flagged=None, model=self.model,
-                                cached=False)
+            return "unavailable", None, False
         self.cache.put(key, {"score": score, "model": self.model, "prompt_version": PROMPT_VERSION,
                              "ts": datetime.now(timezone.utc).isoformat()})
-        return GuardVerdict(field=field, status="ok", score=score, flagged=score >= threshold, model=self.model,
-                            cached=False)
+        return "ok", score, False
+
+    def classify(self, field: str, text: str, max_segments: int | None = None) -> GuardVerdict:
+        """Max score over overlapping segments. Stops at the first flagged segment. Segments beyond `max_segments`
+        are not scanned and, unless something was already flagged, the verdict is `segment_cap` (fail closed)."""
+        threshold = self.settings.guard_threshold
+        segments = segment(text)
+        budget = len(segments) if max_segments is None else max(0, min(max_segments, len(segments)))
+        scores: list[float] = []
+        statuses: list[str] = []
+        cached = True
+        for seg in segments[:budget]:
+            status, score, hit = self._score_one(seg)
+            statuses.append(status)
+            cached = cached and hit
+            if status != "ok":
+                break
+            if score is not None:
+                scores.append(score)
+                if score >= threshold:
+                    break
+        best = max(scores) if scores else None
+        flagged = best is not None and best >= threshold
+        failed = next((s for s in statuses if s != "ok"), None)
+        if flagged:
+            status = "ok"
+        elif failed:
+            status = failed
+        elif budget < len(segments):
+            status = "segment_cap"
+        else:
+            status = "ok"
+        return GuardVerdict(field=field, status=status, score=best if status == "ok" or flagged else None,
+                            flagged=flagged if status == "ok" else None, model=self.model,
+                            cached=cached and bool(statuses), segments_total=len(segments),
+                            segments_scanned=len(statuses))
 
 
 def build_guard(settings: Settings, cache: JsonCache | None = None, **backend_opts) -> Guard:

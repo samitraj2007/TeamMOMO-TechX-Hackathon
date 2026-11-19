@@ -189,7 +189,12 @@ def run_case(conn: sqlite3.Connection, alert_id: str, guard: Guard, threshold: f
     add(Step(key="quarantine_classifier", label="Quarantine · injection classifier", actor="LLM",
              status={"INJECTION": "FLAGGED", "BENIGN": "DONE", "UNAVAILABLE": "DEGRADED"}[q.classifier_verdict],
              duration_ms=q.classifier_ms,
-             summary=f"{q.classifier_verdict}" + (" (cached)" if q.classifier and all(v.cached for v in q.classifier) else "")))
+             summary=f"{q.classifier_verdict}" + "".join(
+                 f" · SEGMENT_CAP_EXCEEDED on {v.field} ({v.segments_scanned}/{v.segments_total} segments scanned)"
+                 for v in q.classifier if v.status == "segment_cap")
+             + (" (cached)" if q.classifier and all(v.cached for v in q.classifier) else "")),
+        segments={v.field: f"{v.segments_scanned}/{v.segments_total}" for v in q.classifier},
+        segment_cap_exceeded=any(v.status == "segment_cap" for v in q.classifier))
 
     t0 = time.perf_counter()
     ev = _gather_evidence(conn, txn)

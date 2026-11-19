@@ -31,12 +31,13 @@ class Normalised:
         return self.index_map[start], self.index_map[end - 1] + 1
 
 
-def normalise(raw: str) -> Normalised:
+def normalise(raw: str, limit: int | None = MAX_SCAN_CHARS) -> Normalised:
+    """`limit=None` normalises the whole text (classifier input); the regex layer scans the first MAX_SCAN_CHARS."""
     oversize = len(raw) > MAX_FIELD_CHARS
     chars: list[str] = []
     index_map: list[int] = []
     zw = hg = 0
-    for i, ch in enumerate(raw[:MAX_SCAN_CHARS]):
+    for i, ch in enumerate(raw[:limit]):
         if ch in ZERO_WIDTH:
             zw += 1
             continue

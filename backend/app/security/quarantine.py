@@ -119,12 +119,15 @@ def quarantine(fields: dict[str, str | None], guard: Guard) -> QuarantineResult:
     hits: list[RegexHit] = []
     verdicts: list[GuardVerdict] = []
     guard_s = 0.0
+    budget = guard.settings.guard_max_segments
     for name, raw in present.items():
         field_hits, _, decoded = scan_field(raw, name)
         hits.extend(field_hits)
-        guard_input = normalise(raw).text + "".join(f"\n{d}" for d in decoded)
+        guard_input = normalise(raw, limit=None).text + "".join(f"\n{d}" for d in decoded)
         g0 = time.perf_counter()
-        verdicts.append(guard.classify(name, guard_input))
+        verdict = guard.classify(name, guard_input, max_segments=budget)
+        verdicts.append(verdict)
+        budget -= verdict.segments_scanned
         guard_s += time.perf_counter() - g0
 
     signals = [InjectionSignal(code=h.code, field=h.field, layer="CODE") for h in hits]

@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     groq_model_light: str = ""
     groq_model_guard: str = ""
     guard_threshold: float = 0.5
+    guard_max_segments: int = 12
     llm_timeout_s: float = 10.0
 
     backup_llm_name: str = "backup"

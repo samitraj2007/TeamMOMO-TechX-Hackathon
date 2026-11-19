@@ -43,11 +43,13 @@ export interface Span {
 
 export interface GuardVerdict {
   field: string;
-  status: "ok" | "unavailable" | "cache_miss";
+  status: "ok" | "unavailable" | "cache_miss" | "segment_cap";
   score: number | null;
   flagged: boolean | null;
   model: string;
   cached: boolean;
+  segments_total: number;
+  segments_scanned: number;
 }
 
 export interface InjectionSignal {
