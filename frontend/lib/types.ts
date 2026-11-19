@@ -22,7 +22,29 @@ export interface CaseSummary {
   currency: string;
   payee_name: string | null;
   rule_id: string;
+  alerted: boolean;
   last_route: Route | null;
+}
+
+export interface TransactionSummary {
+  txn_id: string;
+  alert_id: string | null;
+  alerted: boolean;
+  rule_id: string | null;
+  amount: number;
+  currency: string;
+  payee_name: string | null;
+  ts: string | null;
+  last_route: Route | null;
+}
+
+export interface TransactionRun {
+  txn_id: string;
+  alert_id: string;
+  alerted: boolean;
+  rule_id: string;
+  label: string;
+  run: CaseRun;
 }
 
 export interface Step {

@@ -1,4 +1,13 @@
-import type { Approval, CaseDetail, CaseRun, CaseSummary, Health, Resolution } from "./types";
+import type {
+  Approval,
+  CaseDetail,
+  CaseRun,
+  CaseSummary,
+  Health,
+  Resolution,
+  TransactionRun,
+  TransactionSummary,
+} from "./types";
 
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8000";
 
@@ -35,6 +44,13 @@ export const api = {
   cases: () => req<CaseSummary[]>("/cases"),
   caseDetail: (id: string) => req<CaseDetail>(`/cases/${id}`),
   run: (id: string) => req<CaseRun>(`/cases/${id}/run`, { method: "POST" }),
+  transactions: (params: { alerted?: boolean; limit?: number; offset?: number } = {}) => {
+    const q = new URLSearchParams(
+      Object.entries(params).flatMap(([k, v]) => (v === undefined ? [] : [[k, String(v)]])),
+    );
+    return req<TransactionSummary[]>(`/transactions?${q}`);
+  },
+  runTransaction: (txnId: string) => req<TransactionRun>(`/transactions/${txnId}/run`, { method: "POST" }),
   commit: (id: string, action: Resolution["action"]) =>
     req<Resolution>(`/cases/${id}/commit`, { method: "POST", body: JSON.stringify({ action }) }),
   decide: (id: string, body: { decision: Approval["decision"]; action: Resolution["action"]; reason: string }) =>

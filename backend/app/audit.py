@@ -15,7 +15,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 GENESIS = "0" * 64
-Kind = Literal["INGEST", "STEP", "DECISION", "DECISION_REFUSED", "COMMIT", "COMMIT_REFUSED"]
+Kind = Literal["INGEST", "MANUAL_RUN", "STEP", "DECISION", "DECISION_REFUSED", "COMMIT", "COMMIT_REFUSED"]
 
 
 class AuditEntry(BaseModel):

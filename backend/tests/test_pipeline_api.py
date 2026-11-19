@@ -139,5 +139,5 @@ def test_unknown_case_404(client):
 def test_reset(client):
     a = by_tag(client)["A"]
     client.post(f"/cases/{a['alert_id']}/run")
-    assert client.post("/demo/reset", headers={"X-Admin-Token": ADMIN_TOKEN}).json()["counts"]["transactions"] == 100
+    assert client.post("/demo/reset", headers={"X-Admin-Token": ADMIN_TOKEN}).json()["counts"]["transactions"] == 1000
     assert client.get(f"/cases/{a['alert_id']}").json()["resolution"] is None

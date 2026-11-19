@@ -1,6 +1,7 @@
 import hmac
 import logging
 import threading
+from datetime import datetime, timezone
 from typing import Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Path, Query, Request
@@ -42,6 +43,7 @@ DEMO_TITLES = {
     "G": "Injection hidden in payee name", "H": "Direct override instruction", "T": "Benign memo with trigger words",
 }
 DEMO_ORDER = "ABDCEFGHT"
+MANUAL_RULE = "MANUAL-RUN"
 
 _runs: dict[str, CaseRun] = {}
 _db_lock = threading.Lock()
@@ -89,6 +91,7 @@ class CaseSummary(BaseModel):
     currency: str
     payee_name: str | None
     rule_id: str
+    alerted: bool = Field(description="False when the alert was created only to run the pipeline on demand")
     last_route: Route | None
 
 
@@ -126,10 +129,13 @@ class DecisionOut(BaseModel):
 def _summary(alert: dict, txn: dict) -> CaseSummary:
     tag = txn["demo_tag"]
     run = _runs.get(alert["record_id"])
+    alerted = alert["rule_id"] != MANUAL_RULE
+    default = f"Flagged transaction {txn['record_id']}" if alerted else \
+        f"Not alerted by rules - manual run of {txn['record_id']}"
     return CaseSummary(alert_id=alert["record_id"], txn_id=txn["record_id"], demo_tag=tag,
-                       title=DEMO_TITLES.get(tag or "", f"Flagged transaction {txn['record_id']}"),
-                       amount=txn["amount"], currency=txn["currency"], payee_name=txn["payee_name"],
-                       rule_id=alert["rule_id"], last_route=run.decision.route if run else None)
+                       title=DEMO_TITLES.get(tag or "", default), amount=txn["amount"], currency=txn["currency"],
+                       payee_name=txn["payee_name"], rule_id=alert["rule_id"], alerted=alerted,
+                       last_route=run.decision.route if run else None)
 
 
 def _load(conn, alert_id: str) -> tuple[dict, dict]:
@@ -177,6 +183,72 @@ def run(alert_id: str, conn=Depends(get_conn)):
         result = run_case(conn, alert_id, get_guard(), settings.aed_block_threshold, get_investigator())
     _runs[alert_id] = result
     return result
+
+
+class TransactionSummary(BaseModel):
+    txn_id: str
+    alert_id: str | None
+    alerted: bool
+    rule_id: str | None
+    amount: float
+    currency: str
+    payee_name: str | None
+    ts: str | None
+    last_route: Route | None
+
+
+@app.get("/transactions", response_model=list[TransactionSummary])
+def list_transactions(alerted: bool | None = None, limit: int = Query(100, ge=1, le=1000),
+                      offset: int = Query(0, ge=0), conn=Depends(get_conn)):
+    """Every transaction, alerted or not. `alerted` filters on rule-raised alerts (manual runs do not count)."""
+    rows = conn.execute(
+        "SELECT t.record_id, t.amount, t.currency, t.payee_name, t.ts, a.record_id AS alert_id, a.rule_id "
+        "FROM transactions t LEFT JOIN alerts a ON a.txn_id = t.record_id ORDER BY t.record_id").fetchall()
+    out = []
+    for r in rows:
+        is_alerted = r["alert_id"] is not None and r["rule_id"] != MANUAL_RULE
+        if alerted is not None and is_alerted != alerted:
+            continue
+        run = _runs.get(r["alert_id"]) if r["alert_id"] else None
+        out.append(TransactionSummary(txn_id=r["record_id"], alert_id=r["alert_id"], alerted=is_alerted,
+                                      rule_id=r["rule_id"], amount=r["amount"], currency=r["currency"],
+                                      payee_name=r["payee_name"], ts=r["ts"],
+                                      last_route=run.decision.route if run else None))
+    return out[offset:offset + limit]
+
+
+class TransactionRunOut(BaseModel):
+    txn_id: str
+    alert_id: str
+    alerted: bool
+    rule_id: str
+    label: str
+    run: CaseRun
+
+
+@app.post("/transactions/{txn_id}/run", response_model=TransactionRunOut)
+def run_transaction(txn_id: str = Path(pattern=r"^TXN-\d{5,6}$"), conn=Depends(get_conn)):
+    """Full pipeline on any transaction. One without a rule-raised alert gets a MANUAL-RUN alert sharing its
+    number and is labelled as not alerted."""
+    if conn.execute("SELECT 1 FROM transactions WHERE record_id = ?", (txn_id,)).fetchone() is None:
+        raise HTTPException(404, f"Unknown transaction {txn_id}")
+    with _db_lock:
+        alert = conn.execute("SELECT record_id, rule_id FROM alerts WHERE txn_id = ? ORDER BY record_id LIMIT 1",
+                             (txn_id,)).fetchone()
+        if alert is None:
+            alert_id, rule_id = f"ALT-{int(txn_id.split('-')[1]):05d}", MANUAL_RULE
+            conn.execute("INSERT INTO alerts VALUES (?,?,?,?)",
+                         (alert_id, txn_id, rule_id, datetime.now(timezone.utc).isoformat()))
+            audit.append(conn, alert_id, "MANUAL_RUN", "API", {"txn_id": txn_id, "alerted_by_rules": False})
+            conn.commit()
+        else:
+            alert_id, rule_id = alert["record_id"], alert["rule_id"]
+        result = run_case(conn, alert_id, get_guard(), settings.aed_block_threshold, get_investigator())
+    _runs[alert_id] = result
+    alerted = rule_id != MANUAL_RULE
+    return TransactionRunOut(txn_id=txn_id, alert_id=alert_id, alerted=alerted, rule_id=rule_id,
+                             label=f"Alerted by rules {rule_id}" if alerted else
+                             "Not alerted by rules - manual pipeline run", run=result)
 
 
 class IngestOut(BaseModel):

@@ -32,15 +32,17 @@ class IngestIn(BaseModel):
     ts: AwareDatetime | None = None
 
 
-def _next(conn: sqlite3.Connection, table: str, prefix: str) -> str:
-    return f"{prefix}-{conn.execute(f'SELECT COUNT(*) FROM {table}').fetchone()[0] + 1:05d}"
+def _next_number(conn: sqlite3.Connection) -> int:
+    """Alerts and velocity rows share the transaction number, and not every transaction has an alert."""
+    return conn.execute("SELECT COALESCE(MAX(CAST(substr(record_id, 5) AS INTEGER)), 0) FROM transactions"
+                        ).fetchone()[0] + 1
 
 
 def store(conn: sqlite3.Connection, body: IngestIn) -> tuple[str, str]:
     """Insert transaction, alert and a code-computed 24h velocity row. Returns (alert_id, txn_id)."""
     ts = (body.ts or datetime.now(timezone.utc)).astimezone(timezone.utc)
-    txn_id, alert_id, vel_id = _next(conn, "transactions", "TXN"), _next(conn, "alerts", "ALT"), \
-        _next(conn, "velocity_logs", "VEL")
+    n = _next_number(conn)
+    txn_id, alert_id, vel_id = f"TXN-{n:05d}", f"ALT-{n:05d}", f"VEL-{n:05d}"
     conn.execute(
         "INSERT INTO transactions (record_id, customer_id, device_id, amount, currency, channel, payee_name, "
         "payee_account, payee_known, memo, ip, country, ts, is_fraud, scenario, expected_route, injection_family, "

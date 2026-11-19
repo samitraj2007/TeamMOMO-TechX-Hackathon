@@ -1,4 +1,32 @@
 {
+ "007542f6d1a2d0058fb765e053d94ea8428c47b952094713f6401c4eea695ca6": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.95,
+   "findings": [
+    {
+     "code": "PROFILE_CONSISTENT",
+     "note": "Transaction aligns with customer profile and device verification.",
+     "record_ids": [
+      "TXN-00043",
+      "CUS-0003",
+      "DEV-0003",
+      "VEL-00043"
+     ]
+    }
+   ],
+   "recommendation": "CLEAR"
+  },
+  "prompt_version": "inv-v2",
+  "provider": "main",
+  "ts": "2026-11-19T15:58:44.394353+00:00",
+  "usage": {
+   "completion_tokens": 173,
+   "prompt_tokens": 617,
+   "reasoning_tokens": 73,
+   "total_tokens": 790
+  }
+ },
  "00b02bd75f51f6d5c9a71895bbdb9fa3c36edd89d8fc8a4c2fa86e9764011883": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
   "prompt_version": "guard-v1",
@@ -10,6 +38,12 @@
   "prompt_version": "guard-v1",
   "score": 0.0004639283288270235,
   "ts": "2026-11-19T13:40:13.233301+00:00"
+ },
+ "034f5960d195a2f0b561bc8419cbf5254da78ec3450fdffbf1b657d2fd3a9ea4": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.00042860375833697617,
+  "ts": "2026-11-19T15:59:29.302705+00:00"
  },
  "054679567dc46573ac203beac0d290c604a49bcb5d299619102fcb2cd74a5f63": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
@@ -47,11 +81,48 @@
   "score": 0.0003740107058547437,
   "ts": "2026-11-19T13:41:05.776557+00:00"
  },
+ "10e9a5b520074be7895d40651637b98502a7bdbe40a1a64fac41cb7a242d1c47": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.85,
+   "findings": [
+    {
+     "code": "INJECTION_SIGNAL",
+     "note": "Injection signals detected in memo; transaction details flagged.",
+     "record_ids": [
+      "TXN-00153"
+     ]
+    }
+   ],
+   "recommendation": "REVIEW"
+  },
+  "prompt_version": "inv-v2",
+  "provider": "main",
+  "ts": "2026-11-19T15:59:30.185344+00:00",
+  "usage": {
+   "completion_tokens": 204,
+   "prompt_tokens": 642,
+   "reasoning_tokens": 122,
+   "total_tokens": 846
+  }
+ },
+ "110ea03cde1a4d7c7dd39dc01d14af5709ea91c6cb43a32cf0e2e0ddf754508c": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.9994632601737976,
+  "ts": "2026-11-19T15:59:54.446428+00:00"
+ },
  "11b058c0c6b81da59a80ae61694bf4031ee442680e43a6aac17fef2c24773010": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
   "prompt_version": "guard-v1",
   "score": 0.00043112837010994554,
   "ts": "2026-11-19T13:41:30.952079+00:00"
+ },
+ "125582889545f99e1fe3f8666dbd34e970346497632e75c54976ecc17bcb572f": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.17347855865955353,
+  "ts": "2026-11-19T15:59:40.922382+00:00"
  },
  "12f3d92ae1d5b1f4b9a6ca036fcb91cc2c664b3d114e5a4d4f535668c7cd1965": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
@@ -64,6 +135,18 @@
   "prompt_version": "guard-v1",
   "score": 0.00048674491699784994,
   "ts": "2026-11-19T13:41:39.348980+00:00"
+ },
+ "1594cdc687eb7d7e3e2b34cf8f57c836ed6a8c850ad7f60017cbe159e4192d3b": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.0005544328014366329,
+  "ts": "2026-11-19T16:01:13.696893+00:00"
+ },
+ "179d88c90a22decd21a1925674495c39302f5f5159ca558ff5cda944841977d7": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.0019331455696374178,
+  "ts": "2026-11-19T16:00:31.830465+00:00"
  },
  "189ef8bdcc8baf10ef312dcd3c473f528c88889883fe129d2aeac4afee3c58b2": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
@@ -121,11 +204,73 @@
    "total_tokens": 930
   }
  },
+ "1f40ad7b53784bffaeed3481c753916029028bc058a214d149ed0fc17696583c": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.9990105628967285,
+  "ts": "2026-11-19T16:01:03.118496+00:00"
+ },
  "20e9aa4399be06137d1f02bd058539b14b6c37a956c8475e6c9ad6eeb5587400": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
   "prompt_version": "guard-v1",
   "score": 0.0006960970349609852,
   "ts": "2026-11-19T13:40:27.874444+00:00"
+ },
+ "22770140061d1e55fc8a1e6663f3ba5e79b0964d6234a78c263b966022438eba": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.998979389667511,
+  "ts": "2026-11-19T16:01:28.338717+00:00"
+ },
+ "2449d851466e533e9c6bfe191c7e3974f36e116bbf43182753d69e4c190d5668": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.85,
+   "findings": [
+    {
+     "code": "DEVICE_UNVERIFIED",
+     "note": "Device not verified on file.",
+     "record_ids": [
+      "DEV-0037"
+     ]
+    },
+    {
+     "code": "VELOCITY_ABNORMAL",
+     "note": "Multiple transactions and new payees within 24h.",
+     "record_ids": [
+      "VEL-00021"
+     ]
+    }
+   ],
+   "recommendation": "REVIEW"
+  },
+  "prompt_version": "inv-v2",
+  "provider": "main",
+  "ts": "2026-11-19T15:58:27.178000+00:00",
+  "usage": {
+   "completion_tokens": 205,
+   "prompt_tokens": 625,
+   "reasoning_tokens": 85,
+   "total_tokens": 830
+  }
+ },
+ "29d76a0c4807a1fc9037504ceff735d05d9288712fabdf2e92b1bf351a883125": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.002080113161355257,
+  "ts": "2026-11-19T16:00:44.375547+00:00"
+ },
+ "2ca4ec59273dd039545a0b7de49db58c9ee929498ab9fc3ab121b3ace3fc3e61": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.05519575625658035,
+  "ts": "2026-11-19T16:00:35.923301+00:00"
+ },
+ "2f338fc15d204c8f4ab419781a80a5634c459918a6737cd259017296042a0919": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.9995248317718506,
+  "ts": "2026-11-19T16:01:07.299108+00:00"
  },
  "2f8b3f0a89f9d670ff546af6ff3daf9e5a562c4b55da849086b1a092ee943631": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
@@ -139,17 +284,58 @@
   "score": 0.00046083779307082295,
   "ts": "2026-11-19T13:40:44.667503+00:00"
  },
+ "3118b55aaa7e5f3bdb26806d2507e8d10d13aa1d651eeab191b4fa7db249aef8": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.0009301623213104904,
+  "ts": "2026-11-19T16:01:30.491699+00:00"
+ },
  "3342e3ddbab7469bd0014fd426f28808fac888ef4f13261972db518941a1897e": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
   "prompt_version": "guard-v1",
   "score": 0.0004577075887937099,
   "ts": "2026-11-19T13:40:46.789754+00:00"
  },
+ "380c308decbb13566f5e291219e4082d866f2934feabb5c231acf6fa0a81f857": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.95,
+   "findings": [],
+   "recommendation": "CLEAR"
+  },
+  "prompt_version": "inv-v2",
+  "provider": "main",
+  "ts": "2026-11-19T15:57:39.836607+00:00",
+  "usage": {
+   "completion_tokens": 117,
+   "prompt_tokens": 613,
+   "reasoning_tokens": 78,
+   "total_tokens": 730
+  }
+ },
  "3de433adb0b03214da91ab8562582911f117390cb9de57a35dbcbcba8ef0be38": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
   "prompt_version": "guard-v1",
   "score": 0.00040186551632359624,
   "ts": "2026-11-19T13:39:11.132393+00:00"
+ },
+ "415c970fc6867ad35f8a26cd667496e56bb8c9bf1816226c422995cb2868f7f3": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.0005323579534888268,
+  "ts": "2026-11-19T16:01:38.890605+00:00"
+ },
+ "417e01ea0dd85d52cb4ab75812625db15a3d3c5cc6dbcfec9c78705d771a01dc": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.0007515923934988678,
+  "ts": "2026-11-19T15:59:38.781284+00:00"
+ },
+ "4626297845abcb628c2e7369a3c3d6e739d07072f57cd6b748f03925a56792dd": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.000524881761521101,
+  "ts": "2026-11-19T16:00:37.927998+00:00"
  },
  "4923a3a877c6d10ce283840374776761676589e8bd3f182f3fddf5252a282bb2": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
@@ -162,6 +348,18 @@
   "prompt_version": "guard-v1",
   "score": 0.0005327619728632271,
   "ts": "2026-11-19T13:39:20.704067+00:00"
+ },
+ "4b38a67c78ef32e405aacf6ee6d5eb843ca54ea580deac7346a96ddd867de2ea": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.9988756775856018,
+  "ts": "2026-11-19T16:01:19.939311+00:00"
+ },
+ "52e65b709ed81c8f50d65c7290b3fc6fe8b6608311e7133a9e593dfe0daa5164": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.9992662072181702,
+  "ts": "2026-11-19T16:00:27.525722+00:00"
  },
  "549a255bee045bf52b0bb7e6ab4aa4bed136c983fbf52c4fdfe65ba94ce09310": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
@@ -192,6 +390,23 @@
   "prompt_version": "guard-v1",
   "score": 0.00047136598732322454,
   "ts": "2026-11-19T13:40:36.246661+00:00"
+ },
+ "6169285df1b4f671053e8e392a6f6cca78a057020bc48d75ff68f2bd5afdc827": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.95,
+   "findings": [],
+   "recommendation": "CLEAR"
+  },
+  "prompt_version": "inv-v2",
+  "provider": "main",
+  "ts": "2026-11-19T15:57:31.808131+00:00",
+  "usage": {
+   "completion_tokens": 105,
+   "prompt_tokens": 613,
+   "reasoning_tokens": 66,
+   "total_tokens": 718
+  }
  },
  "61bc9399ca85a0f94372cbb90e66fbeca09b88d3b5674db7ffb22a13a3747a65": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
@@ -235,11 +450,40 @@
   "score": 0.0004398991004563868,
   "ts": "2026-11-19T13:40:00.660042+00:00"
  },
+ "6bc82bea105d9500ce3b7714bfc1a8357da2882477f166282e8a8974a26c44c3": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.9992719292640686,
+  "ts": "2026-11-19T16:01:09.510114+00:00"
+ },
+ "6ca27d38eff039bbfe03cfa9918e4d4a7a1c4dee4f5b99d1a6a5bc114ca34b3f": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.0015717600472271442,
+  "ts": "2026-11-19T16:00:16.767824+00:00"
+ },
  "70cf0eae02bdfc9d694329768aece06a9dcb2960b7e0c516593ac2c783564934": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
   "prompt_version": "guard-v1",
   "score": 0.0004906894755549729,
   "ts": "2026-11-19T13:39:52.249510+00:00"
+ },
+ "70fa519de61c2cd9ba7be6ac79f17872c11bb2f710f81c6c24148c40703fdc72": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.97,
+   "findings": [],
+   "recommendation": "CLEAR"
+  },
+  "prompt_version": "inv-v2",
+  "provider": "main",
+  "ts": "2026-11-19T15:57:48.891442+00:00",
+  "usage": {
+   "completion_tokens": 80,
+   "prompt_tokens": 619,
+   "reasoning_tokens": 41,
+   "total_tokens": 699
+  }
  },
  "79135515eb45f81b437f12d1b8baaa8b3bfa78c35121b480d473d8082e0b9f2a": {
   "model": "openai/gpt-oss-120b",
@@ -282,6 +526,31 @@
   "prompt_version": "guard-v1",
   "score": 0.9992903470993042,
   "ts": "2026-11-19T13:40:34.149313+00:00"
+ },
+ "7e22289feff70b819ed622252890a8408b1e5ac5bba46c13bfd338332a051cea": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.9,
+   "findings": [
+    {
+     "code": "INJECTION_SIGNAL",
+     "note": "Injection signals detected; flagged for review.",
+     "record_ids": [
+      "TXN-00156"
+     ]
+    }
+   ],
+   "recommendation": "REVIEW"
+  },
+  "prompt_version": "inv-v2",
+  "provider": "main",
+  "ts": "2026-11-19T15:59:46.147315+00:00",
+  "usage": {
+   "completion_tokens": 161,
+   "prompt_tokens": 656,
+   "reasoning_tokens": 81,
+   "total_tokens": 817
+  }
  },
  "7fda3fbb38635dd669e7b5c7bde9c1936671acb85ddf46368a534401741d5d3f": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
@@ -331,11 +600,67 @@
   "score": 0.0005052780616097152,
   "ts": "2026-11-19T13:39:37.493077+00:00"
  },
+ "81f14a8260a1369c027d72e8a4d70949537d6acb0f7cd704d1b8df1cbaf2389b": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.95,
+   "findings": [
+    {
+     "code": "WATCHLIST_HIT",
+     "note": "Name match with DOB and nationality match to watchlist.",
+     "record_ids": [
+      "WL-005"
+     ]
+    }
+   ],
+   "recommendation": "BLOCK"
+  },
+  "prompt_version": "inv-v2",
+  "provider": "main",
+  "ts": "2026-11-19T15:58:18.446084+00:00",
+  "usage": {
+   "completion_tokens": 133,
+   "prompt_tokens": 657,
+   "reasoning_tokens": 52,
+   "total_tokens": 790
+  }
+ },
  "8597bb0b05fec3a2d9465d6e0cf2102924cf1d633dbb25cff19b53156dec947c": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
   "prompt_version": "guard-v1",
   "score": 0.00046041011228226125,
   "ts": "2026-11-19T13:41:33.004070+00:00"
+ },
+ "863d47e2ac86e81f03c343b21d0f0119155a86ac82e2f0de9a3dd8710549e87d": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.78,
+   "findings": [
+    {
+     "code": "INJECTION_SIGNAL",
+     "note": "Injection patterns detected in memo; flagged for review.",
+     "record_ids": [
+      "TXN-00175"
+     ]
+    }
+   ],
+   "recommendation": "REVIEW"
+  },
+  "prompt_version": "inv-v2",
+  "provider": "main",
+  "ts": "2026-11-19T15:59:55.361001+00:00",
+  "usage": {
+   "completion_tokens": 170,
+   "prompt_tokens": 655,
+   "reasoning_tokens": 88,
+   "total_tokens": 825
+  }
+ },
+ "864b6dd7e8cc31a5413a8c94f10f92e04ae468e8ec33b12b479cbbf67a009ba2": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.0013023471692577004,
+  "ts": "2026-11-19T16:00:54.888367+00:00"
  },
  "887b51fa224b5bd5e6b8484fc0c53d460acd6c5fb209ff6f124be8d96d24ff2d": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
@@ -343,11 +668,48 @@
   "score": 0.0004598524537868798,
   "ts": "2026-11-19T13:41:41.513104+00:00"
  },
+ "89a0fdfe79f7284588dddeb1a70300ef571bd09c8159fad3d950778421201ba3": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.9992191791534424,
+  "ts": "2026-11-19T15:59:01.613002+00:00"
+ },
+ "8a6ce619c03a43126cb92ca0996a480ea01c2a2f65e5d96ad52a7704b35e86b0": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.92,
+   "findings": [
+    {
+     "code": "INJECTION_SIGNAL",
+     "note": "Injection signal detected in memo; transaction ID noted.",
+     "record_ids": [
+      "TXN-00140"
+     ]
+    }
+   ],
+   "recommendation": "REVIEW"
+  },
+  "prompt_version": "inv-v2",
+  "provider": "main",
+  "ts": "2026-11-19T15:59:11.621501+00:00",
+  "usage": {
+   "completion_tokens": 184,
+   "prompt_tokens": 634,
+   "reasoning_tokens": 102,
+   "total_tokens": 818
+  }
+ },
  "8c90ebf9b0bd004c0d39ef77064c1a4502ad34b8561ad27660761e773a46b49f": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
   "prompt_version": "guard-v1",
   "score": 0.0005941457930020988,
   "ts": "2026-11-19T13:39:29.046753+00:00"
+ },
+ "8d065fd7b5d5d802548f206e6924fe1c6d4eceb053e58d1359935ada0b21f754": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.9992737174034119,
+  "ts": "2026-11-19T16:01:22.095675+00:00"
  },
  "8fba699a1fe520bf86c8aa8deec0495e78a3f62c74c549d63fb5a5a625ae6a1a": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
@@ -361,11 +723,23 @@
   "score": 0.19280822575092316,
   "ts": "2026-11-19T13:40:48.867002+00:00"
  },
+ "8fea2282a562eb209d6ae7834076b2d57f8c3e1b94dc3822037e781a69401c95": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.00044188371975906193,
+  "ts": "2026-11-19T16:00:08.171996+00:00"
+ },
  "917d0bc6dcbcc68adc2c5816c8a5131b6614f0689b8c5883fe51f691e7858a9c": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
   "prompt_version": "guard-v1",
   "score": 0.00044056051410734653,
   "ts": "2026-11-19T13:40:11.053612+00:00"
+ },
+ "934554f70e10e6e44d8fc6ea6ea5d72b00f2e0bf132ec9274fa82e56df282624": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.0010874371509999037,
+  "ts": "2026-11-19T16:00:46.419383+00:00"
  },
  "94588cb5d9b34ee8ef8b3067e6b72972dc8bf0ebc97204a9048c37137b542678": {
   "model": "openai/gpt-oss-120b",
@@ -391,6 +765,29 @@
    "total_tokens": 802
   }
  },
+ "953d1953d39fde68e40d710a43a9ac781c801e95afccc979ecead31dbe5d7cd2": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.99,
+   "findings": [],
+   "recommendation": "CLEAR"
+  },
+  "prompt_version": "inv-v2",
+  "provider": "main",
+  "ts": "2026-11-19T15:57:24.265012+00:00",
+  "usage": {
+   "completion_tokens": 65,
+   "prompt_tokens": 613,
+   "reasoning_tokens": 26,
+   "total_tokens": 678
+  }
+ },
+ "956a069eb9321f171ad002512576a1e9fe16baeef23720e250f3a4a8ec93f7c4": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.038703080266714096,
+  "ts": "2026-11-19T16:01:01.029791+00:00"
+ },
  "965057355d3e61d04ff22ccfcf428d56cbfb8f500d897edf7b20be9486fea104": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
   "prompt_version": "guard-v1",
@@ -408,6 +805,74 @@
   "prompt_version": "guard-v1",
   "score": 0.0004663955478463322,
   "ts": "2026-11-19T13:41:28.921508+00:00"
+ },
+ "9a443c5de0b84e615aa7c9e28c342bbd1d3e0bc8b6ca01e76283c8be8062d696": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.9990532994270325,
+  "ts": "2026-11-19T16:00:56.916639+00:00"
+ },
+ "9ad0007af5955a238cdcb7386b03ea9548378540d84d6900c62ec60052457893": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.0015480357687920332,
+  "ts": "2026-11-19T16:00:40.322997+00:00"
+ },
+ "9d3457cc9ec8ae18ca733d98128c5d795365cd16ac2d81d6bf6a25d65b49395c": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.0007404166390188038,
+  "ts": "2026-11-19T16:01:24.147997+00:00"
+ },
+ "a0e8e57710bbd9ba53f8742026de63e1ab2af582ccc81983d67e41eb3dd201ee": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.013359867967665195,
+  "ts": "2026-11-19T16:00:48.507193+00:00"
+ },
+ "a12a6e5207ab9d28a7ec671fcf33737650fcd74b0eda90d386d0f5d359b168ec": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.9,
+   "findings": [
+    {
+     "code": "AMOUNT_OVER_THRESHOLD",
+     "note": "Transaction exceeds AED 10,000 threshold.",
+     "record_ids": [
+      "TXN-00004"
+     ]
+    },
+    {
+     "code": "VELOCITY_ABNORMAL",
+     "note": "24‑hour amount unusually high for single transaction.",
+     "record_ids": [
+      "VEL-00004"
+     ]
+    }
+   ],
+   "recommendation": "REVIEW"
+  },
+  "prompt_version": "inv-v2",
+  "provider": "main",
+  "ts": "2026-11-19T16:01:59.381069+00:00",
+  "usage": {
+   "completion_tokens": 211,
+   "prompt_tokens": 626,
+   "reasoning_tokens": 88,
+   "total_tokens": 837
+  }
+ },
+ "a175718fb3fae005b245e552633c33c908f55bf80301ee007b618329d2e22e04": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.009154939092695713,
+  "ts": "2026-11-19T15:59:10.775620+00:00"
+ },
+ "a1e5b3e85f7812babedf1df8607e4070fc70ffdeffd678e4cad20ec56db37548": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.00105134432669729,
+  "ts": "2026-11-19T16:00:03.757969+00:00"
  },
  "a8cb40bf88f6b9068209ae5564d6c07d3545548291b4a73a8961439be328bf36": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
@@ -442,6 +907,12 @@
    "reasoning_tokens": 62,
    "total_tokens": 719
   }
+ },
+ "ac6ce8fe8a86ce0a5168f178c46b1063c2f1ccaca2322664d90b8dc729a3a277": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.9990307092666626,
+  "ts": "2026-11-19T16:00:33.751003+00:00"
  },
  "ad1f64155efb99722715c4fb99bcb2030e3f23e207fcbc9851a373f456228135": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
@@ -479,11 +950,76 @@
   "score": 0.0005772135918959975,
   "ts": "2026-11-19T13:40:25.781458+00:00"
  },
+ "b1ed91e3ea5ddde680211d94ca95cca90b16839c68d4d7e975a0e384bc193169": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.9995276927947998,
+  "ts": "2026-11-19T16:01:36.717367+00:00"
+ },
+ "b6f324db30a92835fe472864b4db32dae871b8cf3d5269ad215332cd0b58e183": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.0006727030850015581,
+  "ts": "2026-11-19T16:00:29.678779+00:00"
+ },
+ "b7043dd74dcb352342f1352054ad764c353bb3e36a99fc33260fafbc827b0003": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.75,
+   "findings": [
+    {
+     "code": "WATCHLIST_HIT",
+     "note": "Possible watchlist match on payee alias.",
+     "record_ids": [
+      "WL-007"
+     ]
+    }
+   ],
+   "recommendation": "REVIEW"
+  },
+  "prompt_version": "inv-v2",
+  "provider": "main",
+  "ts": "2026-11-19T16:00:08.697850+00:00",
+  "usage": {
+   "completion_tokens": 131,
+   "prompt_tokens": 660,
+   "reasoning_tokens": 51,
+   "total_tokens": 791
+  }
+ },
  "b78a641589f8771e193691f62103789437607102441755f7f1b1a26531f47f6f": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
   "prompt_version": "guard-v1",
   "score": 0.00041160022374242544,
   "ts": "2026-11-19T13:40:19.503006+00:00"
+ },
+ "b78d854f8bb1dfda2549361fc42d433192c927de9d78cc81a766e70bc0b3bd34": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.98,
+   "findings": [
+    {
+     "code": "PROFILE_CONSISTENT",
+     "note": "Verified customer, device on file, low velocity, amount below threshold.",
+     "record_ids": [
+      "TXN-00008",
+      "CUS-0006",
+      "DEV-0006",
+      "VEL-00008"
+     ]
+    }
+   ],
+   "recommendation": "CLEAR"
+  },
+  "prompt_version": "inv-v2",
+  "provider": "main",
+  "ts": "2026-11-19T15:58:06.629951+00:00",
+  "usage": {
+   "completion_tokens": 227,
+   "prompt_tokens": 612,
+   "reasoning_tokens": 122,
+   "total_tokens": 839
+  }
  },
  "b9d879131b68bdc6c59656ecd76c6323d125e87a714faa28510abce4516ada80": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
@@ -491,11 +1027,29 @@
   "score": 0.0005031606997363269,
   "ts": "2026-11-19T13:39:58.487585+00:00"
  },
+ "ba044e3bca0b8d0f45209626d626cf359ef50f9d91588fd10aa34f192685f6e4": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.0005967927863821387,
+  "ts": "2026-11-19T16:00:42.138329+00:00"
+ },
  "bafc08bcd7224d0584db803f8e3a2274a2f8b23043ef46d80e4bc509f389860b": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
   "prompt_version": "guard-v1",
   "score": 0.00047059269854798913,
   "ts": "2026-11-19T13:40:17.472620+00:00"
+ },
+ "bbfba2a914669ef3d07ebc77cfaff66f237d9a0006084bbdbd29bde6b580ce88": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.9989275336265564,
+  "ts": "2026-11-19T16:00:50.610958+00:00"
+ },
+ "bd4b67f01de70c09ed947aef8c9b54403aa9cf8b3c1ce43550b3420754d4eb79": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.001132537261582911,
+  "ts": "2026-11-19T16:01:34.684939+00:00"
  },
  "c05ef177ec8b5d94a1bf19f5a04689d222163ce9ade04a52a3bc0362ed2c26ed": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
@@ -508,6 +1062,31 @@
   "prompt_version": "guard-v1",
   "score": 0.0004907382535748184,
   "ts": "2026-11-19T13:39:50.073896+00:00"
+ },
+ "c198b196e2ad3f6e0d63958ff80dc439a3d6ff68e17b0b275b00f0c3f66ea8e7": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.6,
+   "findings": [
+    {
+     "code": "WATCHLIST_HIT",
+     "note": "Possible watchlist match on name, no DOB or nationality match.",
+     "record_ids": [
+      "WL-004"
+     ]
+    }
+   ],
+   "recommendation": "REVIEW"
+  },
+  "prompt_version": "inv-v2",
+  "provider": "main",
+  "ts": "2026-11-19T15:58:53.157677+00:00",
+  "usage": {
+   "completion_tokens": 163,
+   "prompt_tokens": 660,
+   "reasoning_tokens": 79,
+   "total_tokens": 823
+  }
  },
  "c35a15e90071f424f3fd694a857fa3b8919b8ef3b37b170aa8a058f8df124fb7": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
@@ -575,17 +1154,178 @@
   "score": 0.00047383824130520225,
   "ts": "2026-11-19T13:39:31.159586+00:00"
  },
+ "cd579dbc819304ab74cdb17c3b04f312649ea48ed3d51b5a8a316616a0ae1421": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.0010036148596554995,
+  "ts": "2026-11-19T15:59:20.263459+00:00"
+ },
  "cdf188d24910e71c707ce62569c8afb198a492bac0d716b5e442dbe700eeff72": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
   "prompt_version": "guard-v1",
   "score": 0.00046306662261486053,
   "ts": "2026-11-19T13:41:12.008694+00:00"
  },
+ "d01784642a42532ff234a334a397707477e3c7b9dd691857fd760d23d545f998": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.85,
+   "findings": [
+    {
+     "code": "INJECTION_SIGNAL",
+     "note": "Injection signals detected; see transaction and device records.",
+     "record_ids": [
+      "TXN-00207",
+      "DEV-0088"
+     ]
+    }
+   ],
+   "recommendation": "REVIEW"
+  },
+  "prompt_version": "inv-v2",
+  "provider": "main",
+  "ts": "2026-11-19T16:00:19.259217+00:00",
+  "usage": {
+   "completion_tokens": 167,
+   "prompt_tokens": 642,
+   "reasoning_tokens": 79,
+   "total_tokens": 809
+  }
+ },
  "d050ba07589677ca98f3fa9cb32935d59597e52ebcd2d4c6e0bd8b59002d8d68": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
   "prompt_version": "guard-v1",
   "score": 0.0004187230078969151,
   "ts": "2026-11-19T13:39:39.543656+00:00"
+ },
+ "d4dc133698b7c6a7d727f918ebbd58b9ef875745a33690263324af71343f02f2": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.8,
+   "findings": [
+    {
+     "code": "INJECTION_SIGNAL",
+     "note": "Injection signals detected in transaction metadata.",
+     "record_ids": [
+      "TXN-00155"
+     ]
+    }
+   ],
+   "recommendation": "REVIEW"
+  },
+  "prompt_version": "inv-v2",
+  "provider": "main",
+  "ts": "2026-11-19T16:02:09.141404+00:00",
+  "usage": {
+   "completion_tokens": 156,
+   "prompt_tokens": 646,
+   "reasoning_tokens": 77,
+   "total_tokens": 802
+  }
+ },
+ "d66b421ea1a7a73146f0a9e243b689273022abd015f22bd11a75e78a979e4fd0": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.92,
+   "findings": [
+    {
+     "code": "INJECTION_SIGNAL",
+     "note": "Injection signals detected in memo facts.",
+     "record_ids": [
+      "TXN-00148"
+     ]
+    }
+   ],
+   "recommendation": "REVIEW"
+  },
+  "prompt_version": "inv-v2",
+  "provider": "main",
+  "ts": "2026-11-19T15:59:21.156079+00:00",
+  "usage": {
+   "completion_tokens": 149,
+   "prompt_tokens": 641,
+   "reasoning_tokens": 70,
+   "total_tokens": 790
+  }
+ },
+ "d88a7a04bf4cd42062f4546b0284569ecfc7efe6d11ed4384e8207979db485b8": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.9994795918464661,
+  "ts": "2026-11-19T16:01:32.545650+00:00"
+ },
+ "db0d37f1258cfa124468fde5072743819259d236d23bd02ad46b59ca283f332d": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.8,
+   "findings": [
+    {
+     "code": "VELOCITY_ABNORMAL",
+     "note": "4 transactions, 38,800 AED total in 24h, new payee detected.",
+     "record_ids": [
+      "VEL-00006"
+     ]
+    }
+   ],
+   "recommendation": "REVIEW"
+  },
+  "prompt_version": "inv-v2",
+  "provider": "main",
+  "ts": "2026-11-19T15:57:57.806972+00:00",
+  "usage": {
+   "completion_tokens": 146,
+   "prompt_tokens": 620,
+   "reasoning_tokens": 54,
+   "total_tokens": 766
+  }
+ },
+ "dc335f76bce6d4835468a099f94a12acd8d43d8c13d922272449170d55d7506c": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.95,
+   "findings": [],
+   "recommendation": "CLEAR"
+  },
+  "prompt_version": "inv-v2",
+  "provider": "main",
+  "ts": "2026-11-19T15:58:36.282463+00:00",
+  "usage": {
+   "completion_tokens": 102,
+   "prompt_tokens": 613,
+   "reasoning_tokens": 63,
+   "total_tokens": 715
+  }
+ },
+ "e0fb3c9ba5f9f7dcca31af0df5bed98ac00d8640d391c3bdb6d7105c3697e4d1": {
+  "model": "openai/gpt-oss-120b",
+  "output": {
+   "confidence": 0.9,
+   "findings": [
+    {
+     "code": "INJECTION_SIGNAL",
+     "note": "Injection signals detected in memo; transaction record reviewed.",
+     "record_ids": [
+      "TXN-00117"
+     ]
+    }
+   ],
+   "recommendation": "REVIEW"
+  },
+  "prompt_version": "inv-v2",
+  "provider": "main",
+  "ts": "2026-11-19T15:59:02.503905+00:00",
+  "usage": {
+   "completion_tokens": 159,
+   "prompt_tokens": 654,
+   "reasoning_tokens": 77,
+   "total_tokens": 813
+  }
+ },
+ "e1dc8a6cf56b30a05a248ff642af5093212b988e04707f25d42220c876cc8a6a": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.0020693878177553415,
+  "ts": "2026-11-19T16:01:05.207524+00:00"
  },
  "e26f36316b51ed21390739558c2d1145406fe36ca885a22ee65bb21a6b23520a": {
   "model": "openai/gpt-oss-120b",
@@ -613,6 +1353,12 @@
    "total_tokens": 802
   }
  },
+ "e47b089fef80e7d1c9ed929f71e4fc99a526ca8c2476f1e0bf915831308acc51": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.000564327638130635,
+  "ts": "2026-11-19T15:59:43.084871+00:00"
+ },
  "e56486a5ad22a69f97e63e00277554624dc4e403ef960159c700a692b45cca08": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
   "prompt_version": "guard-v1",
@@ -624,6 +1370,12 @@
   "prompt_version": "guard-v1",
   "score": 0.00042149514774791896,
   "ts": "2026-11-19T13:41:22.573452+00:00"
+ },
+ "eaacadfc58423860f330ee3cc3ace5ee231c8fe2ffec1ef76a7e7fdb41a2ca10": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.0005440597306005657,
+  "ts": "2026-11-19T16:01:26.290714+00:00"
  },
  "eb83c4d16c89b657761f60300d1a335c3f459a26d2d2535c1bbe5c9d572c9acf": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
@@ -637,11 +1389,35 @@
   "score": 0.0004700233112089336,
   "ts": "2026-11-19T13:41:24.720803+00:00"
  },
+ "f37d3091bfefa37bb5f3f4669525b0c866d99e42d098c9f2c555182d71c5a53c": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.0004438391188159585,
+  "ts": "2026-11-19T16:00:05.805531+00:00"
+ },
+ "f42bb31c54f9233fd0368005a7748670e2ff2b271fe75030a80a31d75c9c588a": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.0004549597215373069,
+  "ts": "2026-11-19T16:00:58.951662+00:00"
+ },
+ "f5513625207dacd7dffc054475413929572df816a4a1522d01409ae37b81e383": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.0006076371064409614,
+  "ts": "2026-11-19T16:00:52.815138+00:00"
+ },
  "f845276351e1b71d9f7205956595566c3f3730fc9c65b6a1a5531d9022b41b76": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
   "prompt_version": "guard-v1",
   "score": 0.0007505667745135725,
   "ts": "2026-11-19T13:39:12.307247+00:00"
+ },
+ "f9010269447a2457d09cfd658e3bca3c44c21d098ae0d5921cc0078ef1553d2f": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.000491863233037293,
+  "ts": "2026-11-19T16:01:11.542460+00:00"
  },
  "f90d6a032f9c1ddca4e0b0738e065a250762b04eca0510571ecb75969ea4d465": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
@@ -649,11 +1425,29 @@
   "score": 0.0011437246575951576,
   "ts": "2026-11-19T13:39:16.523472+00:00"
  },
+ "f90e2131453d883abf93e142b39dce730645f16b0ea15ecdad907c0ed812804d": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.0005767642869614065,
+  "ts": "2026-11-19T16:01:15.748921+00:00"
+ },
+ "fa0aad0c1f77cc6049348c78d2d8c4c0733044722b57be2d1366fe75dfa46f76": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.001298174960538745,
+  "ts": "2026-11-19T16:01:17.797746+00:00"
+ },
  "fab75245f065e5dcbbcd0feb7a15f78e871fc960382ff74cd31bea184f9ff4f9": {
   "model": "meta-llama/llama-prompt-guard-2-86m",
   "prompt_version": "guard-v1",
   "score": 0.0005134411621838808,
   "ts": "2026-11-19T13:39:45.842019+00:00"
+ },
+ "faf9277aca6996b21e5ed0c0af3ad41a26730acad30ffc8d1b1e7bf0f6572b66": {
+  "model": "meta-llama/llama-prompt-guard-2-86m",
+  "prompt_version": "guard-v1",
+  "score": 0.0004641796404030174,
+  "ts": "2026-11-19T15:59:45.218971+00:00"
  },
  "fbc969a4602c01cfe2246322eabe0eb7dbde779b3eb2e426df85b4474830bea2": {
   "model": "meta-llama/llama-prompt-guard-2-86m",

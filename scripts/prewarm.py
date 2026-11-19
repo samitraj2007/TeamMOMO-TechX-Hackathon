@@ -1,7 +1,8 @@
 """Fill the model cache (backend/data/llm_cache.json) so DEMO_MODE=replay works offline.
 
 Usage: python scripts/prewarm.py            # pinned demo cases: classifier + investigator
-       python scripts/prewarm.py --all      # all 100 cases (paced for the free tier)
+       python scripts/prewarm.py --curated  # classifier for every alert, investigator for ~30 curated cases
+       python scripts/prewarm.py --all      # classifier + investigator for every alert (paced for the free tier)
        python scripts/prewarm.py --guard-only
 """
 
@@ -27,6 +28,8 @@ MAIN_TOKENS_PER_MIN = 6000  # free tier is 8K TPM on GROQ_MODEL_MAIN; leave head
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--all", action="store_true")
+    ap.add_argument("--curated", action="store_true")
+    ap.add_argument("--curated-size", type=int, default=30)
     ap.add_argument("--guard-only", action="store_true")
     ap.add_argument("--interval", type=float, default=2.1,
                     help="min seconds between classifier calls (2.1s = ~28 req/min, under the free-tier 30 RPM)")
@@ -44,8 +47,6 @@ def main() -> int:
         print("Missing GROQ_API_KEY / GROQ_MODEL_GUARD / GROQ_MODEL_MAIN in .env - cannot prewarm.")
         return 2
     investigator.backup = None  # the demo cache holds main-model output only
-    if args.guard_only:
-        investigator.backend = None
 
     ensure_seeded()
     with tempfile.TemporaryDirectory() as tmp:
@@ -58,22 +59,43 @@ def main() -> int:
             conn.close()
 
 
+def curated(rows, size: int) -> set[str]:
+    """Demo-tagged cases first, then round-robin across scenarios (and hostile families) in alert-ID order."""
+    chosen = [r["record_id"] for r in rows if r["demo_tag"]]
+    buckets: dict[str, list[str]] = {}
+    for r in rows:
+        if not r["demo_tag"]:
+            buckets.setdefault(r["injection_family"] or r["scenario"], []).append(r["record_id"])
+    while len(chosen) < size and any(buckets.values()):
+        for ids in buckets.values():
+            if ids and len(chosen) < size:
+                chosen.append(ids.pop(0))
+    return set(chosen)
+
+
 def _run(conn, args, settings, cache, guard, investigator) -> int:
-    where = "" if args.all else "WHERE t.demo_tag IS NOT NULL"
-    rows = conn.execute(f"SELECT a.record_id, t.demo_tag, t.scenario "
+    where = "" if args.all or args.curated else "WHERE t.demo_tag IS NOT NULL"
+    rows = conn.execute(f"SELECT a.record_id, t.demo_tag, t.scenario, t.injection_family "
                         f"FROM alerts a JOIN transactions t ON t.record_id = a.txn_id {where} "
                         f"ORDER BY a.record_id").fetchall()
+    inv_backend = investigator.backend
+    inv_cases = {r["record_id"] for r in rows} if not args.curated else curated(rows, args.curated_size)
+    if args.guard_only:
+        inv_cases = set()
 
     before = len(cache)
     guard_failures, inv_failures, tokens, live_calls = 0, 0, [], 0
     failed_cases: list[str] = []
     started = time.monotonic()
-    print(f"guard={settings.groq_model_guard} main={settings.groq_model_main or '-'} cases={len(rows)}", flush=True)
+    print(f"guard={settings.groq_model_guard} main={settings.groq_model_main or '-'} cases={len(rows)} "
+          f"investigator cases={len(inv_cases)}", flush=True)
     for r in rows:
+        with_inv = r["record_id"] in inv_cases
+        investigator.backend = inv_backend if with_inv else None
         run = run_case(conn, r["record_id"], guard, settings.aed_block_threshold, investigator)
         q, inv = run.quarantine, run.investigator
         g_bad = sum(v.status != "ok" for v in q.classifier)
-        i_bad = not args.guard_only and inv.status != "ok"
+        i_bad = with_inv and inv.status != "ok"
         guard_failures += g_bad
         inv_failures += i_bad
         if g_bad or i_bad:
@@ -82,7 +104,7 @@ def _run(conn, args, settings, cache, guard, investigator) -> int:
         if u and not inv.cached:
             tokens.append(u.total_tokens)
             live_calls += 1
-        inv_txt = "-" if args.guard_only else (
+        inv_txt = "-" if not with_inv else (
             f"{inv.status}" + (f" {inv.output.recommendation} {inv.output.confidence:.2f}" if inv.output else "")
             + (f" tok={u.prompt_tokens}+{u.completion_tokens}({u.reasoning_tokens}r)={u.total_tokens}" if u else "")
             + (" cached" if inv.cached else ""))
@@ -94,7 +116,7 @@ def _run(conn, args, settings, cache, guard, investigator) -> int:
     print(f"cases fully cached: {len(rows) - len(failed_cases)}/{len(rows)}; failed cases: {failed_cases or 'none'}")
     print(f"cache entries: {before} -> {len(cache)}; classifier failures: {guard_failures}; "
           f"investigator failures: {inv_failures}; 429s seen: guard {guard.backend.rate_limited}"
-          + (f", main {investigator.backend.rate_limited}" if investigator.backend else ""))
+          + (f", main {inv_backend.rate_limited}" if inv_backend else ""))
     if tokens:
         print(f"investigator live calls: {live_calls}; tokens per call min/avg/max: "
               f"{min(tokens)}/{sum(tokens) // len(tokens)}/{max(tokens)}; total {sum(tokens)}")

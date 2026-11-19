@@ -16,13 +16,13 @@ def test_counts_and_mix():
     d = build_dataset()
     tx = d["transactions"]
     assert len(tx) == N_TRANSACTIONS
-    assert len(d["alerts"]) == len(d["velocity_logs"]) == N_TRANSACTIONS
-    assert 25 <= len(d["customers"]) <= 40
-    assert 30 <= len(d["devices"]) <= 50
+    assert len(d["velocity_logs"]) == N_TRANSACTIONS and 90 <= len(d["alerts"]) <= 110
+    assert 100 <= len(d["customers"]) <= 200
+    assert 120 <= len(d["devices"]) <= 260
     assert len(d["watchlist"]) == 8
     scen = Counter(t["scenario"] for t in tx)
-    assert scen["hostile_memo"] == 5
-    assert scen["benign_trigger_word"] == 3
+    assert scen["hostile_memo"] >= 40
+    assert scen["benign_trigger_word"] >= 6
     assert sum(t["is_fraud"] for t in tx) < N_TRANSACTIONS * 0.2
     assert all(t["currency"] == "AED" for t in tx)
     assert any(t["amount"] > 10_000 for t in tx)
