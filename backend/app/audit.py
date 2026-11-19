@@ -15,7 +15,8 @@ from typing import Literal
 from pydantic import BaseModel
 
 GENESIS = "0" * 64
-Kind = Literal["INGEST", "MANUAL_RUN", "STEP", "DECISION", "DECISION_REFUSED", "COMMIT", "COMMIT_REFUSED"]
+Kind = Literal["INGEST", "MANUAL_RUN", "STEP", "DECISION", "DECISION_REFUSED", "COMMIT", "COMMIT_REFUSED", "FILING",
+               "FILING_REFUSED"]
 
 
 class AuditEntry(BaseModel):
@@ -71,6 +72,12 @@ def entries_for(conn: sqlite3.Connection, alert_id: str) -> list[AuditEntry]:
 
 def latest_for(conn: sqlite3.Connection, alert_id: str) -> AuditEntry | None:
     row = conn.execute("SELECT * FROM audit_log WHERE alert_id = ? ORDER BY seq DESC LIMIT 1", (alert_id,)).fetchone()
+    return _entry(row) if row else None
+
+
+def first_of_kind(conn: sqlite3.Connection, alert_id: str, kind: Kind) -> AuditEntry | None:
+    row = conn.execute("SELECT * FROM audit_log WHERE alert_id = ? AND kind = ? ORDER BY seq LIMIT 1",
+                       (alert_id, kind)).fetchone()
     return _entry(row) if row else None
 
 

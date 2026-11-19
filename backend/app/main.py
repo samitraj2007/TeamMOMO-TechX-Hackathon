@@ -24,6 +24,7 @@ from backend.app.security.classifier import Guard, build_guard
 from backend.app.services.case_resolution import (AlreadyResolved, ApprovalRequired, commit_case_resolution,
                                                   gated_facts, is_override, latest_approval, latest_resolution,
                                                   proposed_action, record_approval)
+from backend.app.services.filing import AlreadyFiled, FilingRefused, file_report
 from backend.app.services.kyc_devices import RecordNotFound
 
 settings = get_settings()
@@ -380,6 +381,42 @@ def get_report(alert_id: str, conn=Depends(get_conn)):
                        (alert_id,)).fetchone()
     return build_report(conn, run_result, latest_approval(conn, alert_id), Resolution(**dict(res)) if res else None,
                         audit.latest_for(conn, alert_id))
+
+
+class FileReportIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    actor: str = Field(default="officer.demo", min_length=1, max_length=60, pattern=r"^[A-Za-z0-9._-]+$")
+    role: Literal["ANALYST", "COMPLIANCE_OFFICER"] = "COMPLIANCE_OFFICER"
+
+
+class FilingOut(BaseModel):
+    filing_id: str = Field(description="The AUD record holding the filing")
+    status: str
+    report_sha256: str
+    approval_id: str
+    cited_record_ids: list[str]
+    audit_hash: str
+
+
+@app.post("/cases/{alert_id}/file-report", response_model=FilingOut)
+def file_case_report(alert_id: str, body: FileReportIn, conn=Depends(get_conn)):
+    """Simulated regulator submission. Refused (403) unless a compliance officer approval is recorded."""
+    _load(conn, alert_id)
+    run_result = _runs.get(alert_id)
+    if run_result is None:
+        raise HTTPException(409, "Run the case before filing its report")
+    with _db_lock:
+        res = latest_resolution(conn, alert_id)
+        report = build_report(conn, run_result, latest_approval(conn, alert_id), res, audit.latest_for(conn, alert_id))
+        try:
+            entry = file_report(conn, alert_id, report, body.actor, body.role)
+        except FilingRefused as e:
+            raise HTTPException(403, str(e))
+        except AlreadyFiled as e:
+            raise HTTPException(409, str(e))
+    p = entry.payload
+    return FilingOut(filing_id=entry.record_id, status=p["status"], report_sha256=p["report_sha256"],
+                     approval_id=p["approval_id"], cited_record_ids=p["cited_record_ids"], audit_hash=entry.hash)
 
 
 @app.get("/cases/{alert_id}/audit", response_model=list[AuditEntry])

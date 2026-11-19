@@ -63,6 +63,15 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ ...body, actor: "officer.demo" }),
     }),
+  fileReport: (id: string, actor = "officer.demo") =>
+    req<{
+      filing_id: string;
+      status: string;
+      report_sha256: string;
+      approval_id: string;
+      cited_record_ids: string[];
+      audit_hash: string;
+    }>(`/cases/${id}/file-report`, { method: "POST", body: JSON.stringify({ actor, role: "COMPLIANCE_OFFICER" }) }),
   reset: (adminToken: string) =>
     req<{ status: string }>("/demo/reset", { method: "POST", headers: { "X-Admin-Token": adminToken } }),
 };
