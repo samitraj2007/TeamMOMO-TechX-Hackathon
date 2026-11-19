@@ -5,6 +5,7 @@ import type {
   CaseSummary,
   Health,
   Resolution,
+  TimelineStep,
   TransactionRun,
   TransactionSummary,
 } from "./types";
@@ -63,6 +64,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ ...body, actor: "officer.demo" }),
     }),
+  timeline: (id: string) => req<{ alert_id: string; steps: TimelineStep[] }>(`/cases/${id}/timeline`),
   fileReport: (id: string, actor = "officer.demo") =>
     req<{
       filing_id: string;

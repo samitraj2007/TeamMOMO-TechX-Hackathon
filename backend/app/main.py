@@ -26,6 +26,7 @@ from backend.app.services.case_resolution import (AlreadyResolved, ApprovalRequi
                                                   proposed_action, record_approval)
 from backend.app.services.filing import AlreadyFiled, FilingRefused, file_report
 from backend.app.services.kyc_devices import RecordNotFound
+from backend.app.timeline import CaseTimeline, build_timeline
 
 settings = get_settings()
 log = logging.getLogger("momo.audit")
@@ -423,6 +424,13 @@ def file_case_report(alert_id: str, body: FileReportIn, conn=Depends(get_conn)):
 def case_audit(alert_id: str, conn=Depends(get_conn)):
     _load(conn, alert_id)
     return audit.entries_for(conn, alert_id)
+
+
+@app.get("/cases/{alert_id}/timeline", response_model=CaseTimeline)
+def case_timeline(alert_id: str, conn=Depends(get_conn)):
+    """Ordered steps from the audit log: actor type, service calls (name, record IDs, duration). No free text."""
+    _load(conn, alert_id)
+    return build_timeline(alert_id, audit.entries_for(conn, alert_id))
 
 
 @app.get("/audit/verify", response_model=AuditVerify)

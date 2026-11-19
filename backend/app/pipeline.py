@@ -32,6 +32,14 @@ class Step(BaseModel):
     summary: str
 
 
+class ServiceCall(BaseModel):
+    name: str
+    target: str | None = None
+    record_ids: list[str]
+    duration_ms: float
+    ok: bool
+
+
 class Evidence(BaseModel):
     kyc: KycDevicesResult | None
     sanctions_customer: SanctionsResult | None
@@ -39,6 +47,7 @@ class Evidence(BaseModel):
     velocity: Velocity | None
     complete: bool
     record_ids: list[str]
+    calls: list[ServiceCall] = []
 
 
 class ReasonOut(BaseModel):
@@ -91,18 +100,35 @@ def free_text_fields(conn: sqlite3.Connection, txn: dict) -> dict[str, str | Non
 def _gather_evidence(conn: sqlite3.Connection, txn: dict) -> Evidence:
     kyc = sanc_c = sanc_p = vel = None
     complete = True
+    calls: list[ServiceCall] = []
+
+    def call(name: str, target: str, fn, *args):
+        t0 = time.perf_counter()
+        try:
+            out = fn(conn, *args)
+        except Exception:
+            calls.append(ServiceCall(name=name, target=target, record_ids=[], ok=False,
+                                     duration_ms=round((time.perf_counter() - t0) * 1000, 3)))
+            raise
+        ids = list(out.record_ids) if hasattr(out, "record_ids") else [out.record_id]
+        calls.append(ServiceCall(name=name, target=target, record_ids=ids, ok=True,
+                                 duration_ms=round((time.perf_counter() - t0) * 1000, 3)))
+        return out
+
     try:
-        kyc = fetch_customer_kyc_and_devices(conn, txn["customer_id"], txn["device_id"])
+        kyc = call("fetch_customer_kyc_and_devices", "customer", fetch_customer_kyc_and_devices,
+                   txn["customer_id"], txn["device_id"])
         c = kyc.customer
-        sanc_c = check_sanctions_watchlist(conn, c.name, c.name_ar, c.dob, c.nationality)
+        sanc_c = call("check_sanctions_watchlist", "customer", check_sanctions_watchlist,
+                      c.name, c.name_ar, c.dob, c.nationality)
     except Exception:
         complete = False
     try:
-        sanc_p = check_sanctions_watchlist(conn, txn["payee_name"] or "")
+        sanc_p = call("check_sanctions_watchlist", "payee", check_sanctions_watchlist, txn["payee_name"] or "")
     except Exception:
         complete = False
     try:
-        vel = fetch_velocity(conn, txn["record_id"])
+        vel = call("fetch_velocity", "transaction", fetch_velocity, txn["record_id"])
     except Exception:
         complete = False
     ids = [txn["record_id"]]
@@ -112,7 +138,7 @@ def _gather_evidence(conn: sqlite3.Connection, txn: dict) -> Evidence:
     if vel is not None:
         ids.append(vel.record_id)
     return Evidence(kyc=kyc, sanctions_customer=sanc_c, sanctions_payee=sanc_p, velocity=vel, complete=complete,
-                    record_ids=ids)
+                    record_ids=ids, calls=calls)
 
 
 def evidence_records(txn: dict, ev: Evidence) -> list[EvidenceRecord]:
@@ -161,6 +187,18 @@ def _investigator_step(r: InvestigatorResult) -> Step:
                         + via + tokens + cached)
 
 
+def _investigator_calls(r: InvestigatorResult) -> list[dict]:
+    """One call per provider attempt; a cache hit is a single call to the cache."""
+    cited = sorted({i for f in r.output.findings for i in f.record_ids}) if r.output else []
+    if not r.attempts:
+        return [ServiceCall(name="investigator", target="cache" if r.cached else None,
+                            record_ids=cited if r.status == "ok" else [], duration_ms=r.duration_ms,
+                            ok=r.status == "ok").model_dump()]
+    return [ServiceCall(name="investigator", target=a.provider, duration_ms=a.duration_ms, ok=a.status == "ok",
+                        record_ids=cited if a.status == "ok" and a.provider == r.provider else []).model_dump()
+            for a in r.attempts]
+
+
 def run_case(conn: sqlite3.Connection, alert_id: str, guard: Guard, threshold: float,
              investigator: Investigator) -> CaseRun:
     t_total = time.perf_counter()
@@ -194,7 +232,9 @@ def run_case(conn: sqlite3.Connection, alert_id: str, guard: Guard, threshold: f
                  for v in q.classifier if v.status == "segment_cap")
              + (" (cached)" if q.classifier and all(v.cached for v in q.classifier) else "")),
         segments={v.field: f"{v.segments_scanned}/{v.segments_total}" for v in q.classifier},
-        segment_cap_exceeded=any(v.status == "segment_cap" for v in q.classifier))
+        segment_cap_exceeded=any(v.status == "segment_cap" for v in q.classifier),
+        service_calls=[ServiceCall(name="injection_classifier", target=v.field, record_ids=[],
+                                   duration_ms=v.duration_ms, ok=v.status == "ok").model_dump() for v in q.classifier])
 
     t0 = time.perf_counter()
     ev = _gather_evidence(conn, txn)
@@ -203,7 +243,7 @@ def run_case(conn: sqlite3.Connection, alert_id: str, guard: Guard, threshold: f
     add(Step(key="evidence", label="Evidence · KYC, devices, sanctions, velocity", actor="CODE",
              status="DONE" if ev.complete else "FAILED", duration_ms=_ms(t0),
              summary=f"{len(ev.record_ids)} records · watchlist {band}"),
-        record_ids=ev.record_ids)
+        record_ids=ev.record_ids, service_calls=[c.model_dump() for c in ev.calls])
 
     vel = ev.velocity
     cfg = PolicyConfig(aed_block_threshold=threshold)
@@ -227,7 +267,8 @@ def run_case(conn: sqlite3.Connection, alert_id: str, guard: Guard, threshold: f
         total_tokens=inv.usage.total_tokens if inv.usage else 0,
         attempts=[f"{a.provider} {a.status}" for a in inv.attempts],
         recommendation=inv.output.recommendation if inv.output else None,
-        cited=sorted({i for f in inv.output.findings for i in f.record_ids}) if inv.output else [])
+        cited=sorted({i for f in inv.output.findings for i in f.record_ids}) if inv.output else [],
+        service_calls=_investigator_calls(inv))
 
     t0 = time.perf_counter()
     llm_checks = [] if inv.failed else verify_findings(inv, inv_input.record_ids(), identities(conn, ev.kyc, txn))
@@ -255,6 +296,7 @@ def run_case(conn: sqlite3.Connection, alert_id: str, guard: Guard, threshold: f
         route=decision.route.value, code_route=code_decision.route.value,
         reasons=[r.code for r in decision.reasons])
 
+    t_gate = time.perf_counter()
     existing = conn.execute("SELECT * FROM resolutions WHERE alert_id = ? ORDER BY record_id DESC LIMIT 1",
                             (alert_id,)).fetchone()
     resolution = None
@@ -274,7 +316,10 @@ def run_case(conn: sqlite3.Connection, alert_id: str, guard: Guard, threshold: f
                       "AWAITING_ANALYST": "Escalated to analyst review - funds NOT released",
                       "AWAITING_APPROVAL": "Held - compliance officer approval required before commit",
                       "ALREADY_RESOLVED": "Case already resolved"}[gate]),
-        gate=gate, resolution_id=resolution.record_id if resolution else None)
+        gate=gate, resolution_id=resolution.record_id if resolution else None,
+        service_calls=[ServiceCall(name="commit_case_resolution", record_ids=[resolution.record_id], ok=True,
+                                   duration_ms=round((time.perf_counter() - t_gate) * 1000, 3)).model_dump()]
+        if gate == "AUTO_COMMITTED" else [])
     conn.commit()
 
     run = CaseRun(alert_id=alert_id, txn_id=txn["record_id"], steps=steps, quarantine=q, evidence=ev,

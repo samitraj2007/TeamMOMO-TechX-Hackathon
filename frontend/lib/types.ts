@@ -38,6 +38,30 @@ export interface TransactionSummary {
   last_route: Route | null;
 }
 
+export interface TimelineCall {
+  name: string;
+  target: string | null;
+  record_ids: string[];
+  duration_ms: number;
+  ok: boolean;
+}
+
+export interface TimelineStep {
+  seq: number;
+  audit_id: string;
+  ts: string;
+  run: number;
+  kind: string;
+  step: string;
+  actor_type: "CODE" | "LLM" | "HUMAN";
+  status: string;
+  summary: string;
+  duration_ms: number | null;
+  record_ids: string[];
+  service_calls: TimelineCall[];
+  hash: string;
+}
+
 export interface TransactionRun {
   txn_id: string;
   alert_id: string;

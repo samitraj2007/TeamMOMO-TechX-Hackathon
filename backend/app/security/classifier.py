@@ -38,6 +38,7 @@ class GuardVerdict(BaseModel):
     cached: bool
     segments_total: int = 1
     segments_scanned: int = 1
+    duration_ms: float = 0.0
 
 
 class GuardBackend(Protocol):
@@ -131,6 +132,7 @@ class Guard:
     def classify(self, field: str, text: str, max_segments: int | None = None) -> GuardVerdict:
         """Max score over overlapping segments. Stops at the first flagged segment. Segments beyond `max_segments`
         are not scanned and, unless something was already flagged, the verdict is `segment_cap` (fail closed)."""
+        t0 = time.perf_counter()
         threshold = self.settings.guard_threshold
         segments = segment(text)
         budget = len(segments) if max_segments is None else max(0, min(max_segments, len(segments)))
@@ -161,7 +163,7 @@ class Guard:
         return GuardVerdict(field=field, status=status, score=best if status == "ok" or flagged else None,
                             flagged=flagged if status == "ok" else None, model=self.model,
                             cached=cached and bool(statuses), segments_total=len(segments),
-                            segments_scanned=len(statuses))
+                            segments_scanned=len(statuses), duration_ms=round((time.perf_counter() - t0) * 1000, 3))
 
 
 def build_guard(settings: Settings, cache: JsonCache | None = None, **backend_opts) -> Guard:
