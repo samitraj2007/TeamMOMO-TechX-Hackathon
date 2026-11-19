@@ -33,12 +33,18 @@ export function Airlock({
   memo,
   spans,
   facts,
+  rawReceived = null,
   className,
 }: {
   memo: string;
   /** Spans on the memo field; offsets index the raw text. */
   spans: Span[];
   facts: MemoFacts;
+  /**
+   * Characters of raw free text found inside the investigator's input.
+   * `null` means the API has not confirmed it, so the counter stays hidden.
+   */
+  rawReceived?: number | null;
   className?: string;
 }) {
   const motionOK = useMotionOK();
@@ -289,17 +295,19 @@ export function Airlock({
               </div>
             ))}
           </dl>
-          <div className="relative flex items-center gap-2 overflow-hidden rounded-panel border border-hairline bg-bg px-3 py-2 text-xs"
-            style={{ backgroundColor: pulse ? `rgb(127 168 142 / ${0.2 * pulse})` : undefined }}>
-            <span className={cx("text-muted", lang === "ar" && "ar")}>{tr("rawReceived", lang)}:</span>
-            <span className={cx("num text-sm font-medium", delivered ? "text-sage" : "text-muted")}>0</span>
-          </div>
+          {rawReceived !== null && (
+            <div className="relative flex items-center gap-2 overflow-hidden rounded-panel border border-hairline bg-bg px-3 py-2 text-xs"
+              style={{ backgroundColor: rawReceived === 0 && pulse ? `rgb(127 168 142 / ${0.2 * pulse})` : undefined }}>
+              <span className={cx("text-muted", lang === "ar" && "ar")}>{tr("rawReceived", lang)}:</span>
+              <span className={cx("num text-sm font-medium", rawReceived === 0 ? (delivered ? "text-sage" : "text-muted") : "text-red-text")}>{rawReceived}</span>
+            </div>
+          )}
         </div>
       </div>
 
       <Scrubber t={t} phase={phase} onScrub={(v) => { setStarted(true); setPlaying(false); setScrubbed(true); jump(v); }} />
       <p className="sr-only" aria-live="polite">
-        {done ? `${n} injected span${n === 1 ? "" : "s"} neutralized. The investigator receives typed MemoFacts only; raw text received: 0.` : ""}
+        {done ? `${n} injected span${n === 1 ? "" : "s"} neutralized.${rawReceived === null ? "" : ` Raw text received by the investigator: ${rawReceived}.`}` : ""}
       </p>
     </div>
   );

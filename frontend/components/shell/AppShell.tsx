@@ -19,6 +19,7 @@ export function AppShell({
   ribbon,
   tree,
   activeId,
+  ribbonActiveId,
   railExpanded,
   onToggleRail,
   sidebarOpen,
@@ -39,6 +40,8 @@ export function AppShell({
   ribbon: NavItem[];
   tree: NavItem[];
   activeId?: string;
+  /** Highlights a rail item when the tree selection is a record inside that section. */
+  ribbonActiveId?: string;
   railExpanded: boolean;
   onToggleRail: () => void;
   sidebarOpen: boolean;
@@ -59,7 +62,7 @@ export function AppShell({
   return (
     <div className={cx("flex min-h-0 flex-col gap-2 p-2", className)}>
       <div className="flex min-h-0 flex-1 gap-2">
-        <Ribbon items={ribbon} activeId={activeId} expanded={railExpanded} onToggleExpanded={onToggleRail}
+        <Ribbon items={ribbon} activeId={ribbonActiveId ?? activeId} expanded={railExpanded} onToggleExpanded={onToggleRail}
           sidebarOpen={sidebarOpen} onToggleSidebar={onToggleSidebar} onOpenPalette={onOpenPalette} />
         <AnimatePresence initial={false}>
           {sidebarOpen && (

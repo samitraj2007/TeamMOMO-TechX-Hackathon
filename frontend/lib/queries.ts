@@ -42,6 +42,14 @@ function useInvalidateCase() {
   };
 }
 
+export function useCommit(id: string) {
+  const invalidate = useInvalidateCase();
+  return useMutation({
+    mutationFn: (action: Action) => api.commit(id, action),
+    onSettled: () => invalidate(id),
+  });
+}
+
 export function useRunCase(id: string) {
   const invalidate = useInvalidateCase();
   return useMutation({ mutationFn: () => api.run(id), onSettled: () => invalidate(id) });

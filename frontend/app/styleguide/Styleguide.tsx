@@ -407,7 +407,7 @@ function Investigation() {
           <div className="relative isolate mb-4">
             <span aria-hidden className="absolute inset-x-4 -bottom-2 top-4 -z-10 rounded-panel border border-hairline bg-surface/80" />
             <span aria-hidden className="absolute inset-x-8 -bottom-4 top-8 -z-20 rounded-panel border border-hairline/70 bg-bg" />
-            <Airlock key={which} memo={f.memo} spans={f.spans} facts={f.facts} />
+            <Airlock key={which} memo={f.memo} spans={f.spans} facts={f.facts} rawReceived={0} />
           </div>
         </div>
       </div>

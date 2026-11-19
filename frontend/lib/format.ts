@@ -13,7 +13,8 @@ export function duration(ms: number | null | undefined): string {
 }
 
 export function shortHash(h: string, head = 8, tail = 4): string {
-  return h.length <= head + tail + 1 ? h : `${h.slice(0, head)}…${h.slice(-tail)}`;
+  if (h.length <= head + tail + 1) return h;
+  return tail > 0 ? `${h.slice(0, head)}…${h.slice(-tail)}` : `${h.slice(0, head)}…`;
 }
 
 const GST = new Intl.DateTimeFormat("en-GB", {
