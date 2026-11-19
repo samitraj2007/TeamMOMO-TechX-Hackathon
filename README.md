@@ -24,4 +24,14 @@ npm install
 npm run dev   # http://localhost:3000
 ```
 
-Demo safety: `python scripts/prewarm.py` fills the classifier cache; set `DEMO_MODE=replay` to run from cache only.
+## Demo day
+
+```powershell
+python scripts/prewarm.py          # fills backend/data/llm_cache.json via Prompt Guard (needs GROQ_API_KEY); commit it
+powershell -ExecutionPolicy Bypass -File scripts\demo.ps1   # backend + production frontend
+python scripts/smoke.py            # must print ALL PASS
+```
+
+No internet: set `DEMO_MODE=replay` in `.env` and restart the backend; verdicts come from the committed cache and the UI shows a banner. If the classifier is unavailable and there is no cache, every case fails closed to human review (by design).
+
+Script: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
