@@ -1,7 +1,9 @@
+import hmac
+import logging
 import threading
 from typing import Literal
 
-from fastapi import Depends, FastAPI, HTTPException, Path, Query, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Path, Query, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -24,6 +26,7 @@ from backend.app.services.case_resolution import (AlreadyResolved, ApprovalRequi
 from backend.app.services.kyc_devices import RecordNotFound
 
 settings = get_settings()
+log = logging.getLogger("momo.audit")
 
 app = FastAPI(title="MOMO Sentinel", version="0.1.0")
 app.add_middleware(
@@ -320,10 +323,25 @@ def audit_verify(anchor: str | None = Query(None, pattern=r"^[0-9a-f]{64}$"), co
 
 
 @app.post("/demo/reset")
-def demo_reset() -> dict:
+def demo_reset(x_admin_token: str | None = Header(None)) -> dict:
+    """Wipes and re-seeds the database. DEMO_MODE must not be off and X-Admin-Token must match DEMO_ADMIN_TOKEN.
+    The audit head is logged and returned first so the wiped chain can still be checked against it."""
     from backend.data.generate import generate
 
+    if settings.demo_mode == "off":
+        raise HTTPException(404, "Not Found")
+    expected = settings.demo_admin_token
+    if not expected or not x_admin_token or not hmac.compare_digest(x_admin_token.encode(), expected.encode()):
+        raise HTTPException(403, "Admin token required")
     with _db_lock:
+        ensure_seeded()
+        conn = connect()
+        try:
+            head = audit.verify(conn)
+        finally:
+            conn.close()
+        log.warning("demo reset: audit head before wipe %s (%s, %d entries, chain ok=%s)", head.head_hash,
+                    head.head_record_id, head.entries, head.ok)
         _runs.clear()
         counts = generate(settings.db_file)
-    return {"status": "reset", "counts": counts}
+    return {"status": "reset", "counts": counts, "previous_audit_head": head}

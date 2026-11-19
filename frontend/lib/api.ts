@@ -13,7 +13,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     r = await fetch(API_BASE + path, {
       ...init,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(init?.headers as Record<string, string> | undefined) },
       cache: "no-store",
     });
   } catch {
@@ -47,7 +47,8 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ ...body, actor: "officer.demo" }),
     }),
-  reset: () => req<{ status: string }>("/demo/reset", { method: "POST" }),
+  reset: (adminToken: string) =>
+    req<{ status: string }>("/demo/reset", { method: "POST", headers: { "X-Admin-Token": adminToken } }),
 };
 
 export function errorMessage(e: unknown): string {

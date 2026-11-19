@@ -8,6 +8,7 @@ from backend.app.pipeline import run_case
 from backend.app.security.classifier import Guard
 from backend.tests.fakes import make_investigator
 
+ADMIN_TOKEN = "test-admin-token"
 
 class LowScoreBackend:
     """Classifier that never flags: proves the deterministic layer alone routes every case correctly."""
@@ -77,7 +78,7 @@ def test_classifier_down_fails_closed(conn, demo, tmp_path):
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     s = Settings(_env_file=None, db_path=str(tmp_path / "api.sqlite"), cache_path=str(tmp_path / "c.json"),
-                 groq_model_guard="guard-test")
+                 groq_model_guard="guard-test", demo_admin_token=ADMIN_TOKEN)
     monkeypatch.setattr(main, "settings", s)
     monkeypatch.setattr(main, "_guard", Guard(s, JsonCache(s.cache_file), LowScoreBackend()))
     monkeypatch.setattr(main, "_investigator", make_investigator(tmp_path / "inv.json"))
@@ -138,5 +139,5 @@ def test_unknown_case_404(client):
 def test_reset(client):
     a = by_tag(client)["A"]
     client.post(f"/cases/{a['alert_id']}/run")
-    assert client.post("/demo/reset").json()["counts"]["transactions"] == 100
+    assert client.post("/demo/reset", headers={"X-Admin-Token": ADMIN_TOKEN}).json()["counts"]["transactions"] == 100
     assert client.get(f"/cases/{a['alert_id']}").json()["resolution"] is None

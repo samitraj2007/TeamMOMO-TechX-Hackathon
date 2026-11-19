@@ -11,7 +11,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=REPO_ROOT / ".env", extra="ignore")
 
     app_env: Literal["dev", "prod"] = "dev"
-    demo_mode: Literal["live", "replay"] = "live"
+    demo_mode: Literal["live", "replay", "off"] = "live"
+    demo_admin_token: str = ""
     aed_block_threshold: float = 10_000.0
     qa_sample_rate: float = 0.10
 

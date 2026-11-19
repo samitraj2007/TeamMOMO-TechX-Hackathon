@@ -76,8 +76,10 @@ export default function CaseScreen({ id }: { id: string }) {
   }
 
   async function onReset() {
+    const token = window.prompt("Admin token to reset demo data");
+    if (!token) return;
     try {
-      await api.reset();
+      await api.reset(token);
       setReloadKey((k) => k + 1);
     } catch (e) {
       setError(errorMessage(e));

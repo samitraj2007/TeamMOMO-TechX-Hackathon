@@ -6,16 +6,31 @@ Exit code 0 = demo path is safe.
 
 import argparse
 import json
+import os
 import sys
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 failures: list[str] = []
 
 
-def call(base: str, method: str, path: str, body: dict | None = None) -> tuple[int, dict]:
+def admin_token() -> str:
+    """DEMO_ADMIN_TOKEN from the environment, else from .env. Never printed."""
+    if token := os.environ.get("DEMO_ADMIN_TOKEN"):
+        return token
+    env = Path(__file__).resolve().parents[1] / ".env"
+    for line in env.read_text(encoding="utf-8").splitlines() if env.exists() else []:
+        if line.startswith("DEMO_ADMIN_TOKEN="):
+            return line.split("=", 1)[1].strip()
+    return ""
+
+
+def call(base: str, method: str, path: str, body: dict | None = None,
+         headers: dict | None = None) -> tuple[int, dict]:
     data = json.dumps(body).encode() if body is not None else None
-    req = urllib.request.Request(base + path, data=data, method=method, headers={"Content-Type": "application/json"})
+    req = urllib.request.Request(base + path, data=data, method=method,
+                                 headers={"Content-Type": "application/json", **(headers or {})})
     try:
         with urllib.request.urlopen(req, timeout=30) as r:
             return r.status, json.loads(r.read())
@@ -60,8 +75,11 @@ def main() -> int:
         print("  WARNING: investigator offline - Case A will fail closed to NEEDS_REVIEW instead of AUTO_CLEAR")
     guard_ok = guard_ok and inv_ok
 
+    admin = {"X-Admin-Token": admin_token()}
     status, _ = call(base, "POST", "/demo/reset")
-    check("reset", status == 200)
+    check("reset without admin token refused", status in (403, 404), str(status))
+    status, _ = call(base, "POST", "/demo/reset", headers=admin)
+    check("reset with admin token", status == 200, str(status) + (" (set DEMO_ADMIN_TOKEN)" if status == 403 else ""))
     _, cases = call(base, "GET", "/cases")
     tags = {c["demo_tag"]: c["alert_id"] for c in cases}
     check("pinned cases A, B, D present", {"A", "B", "D"} <= set(tags))
@@ -102,7 +120,7 @@ def main() -> int:
     check(f"hash chain verifies ({v.get('entries')} entries)", v.get("ok") is True and v.get("entries", 0) > 0,
           str(v.get("reason")))
 
-    call(base, "POST", "/demo/reset")
+    call(base, "POST", "/demo/reset", headers=admin)
     print("RESULT:", "ALL PASS" if not failures else f"{len(failures)} FAILED: {failures}")
     return 1 if failures else 0
 
