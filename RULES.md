@@ -11,7 +11,9 @@ DRAFT reconstructed from MASTER_SPEC and docs/01-09 (original RULES.md was missi
 6. amount > threshold OR watchlist_hit => PENDING_APPROVAL. Exactly at threshold is not "over". Tested, including property tests.
 
 ## Models and providers
-7. Never hardcode model names. Read `GROQ_MODEL_MAIN`, `GROQ_MODEL_LIGHT`, `GROQ_MODEL_GUARD` from env.
+7. Never hardcode model names, endpoints or keys. Read them from env only:
+   - Primary provider: `GROQ_API_KEY`, `GROQ_BASE_URL`, `GROQ_MODEL_MAIN`, `GROQ_MODEL_LIGHT`, `GROQ_MODEL_GUARD`.
+   - Backup investigator provider (OpenAI-compatible, used only after the main model fails): `BACKUP_LLM_NAME`, `BACKUP_LLM_BASE_URL`, `BACKUP_LLM_API_KEY`, `BACKUP_LLM_MODEL`, `BACKUP_LLM_REASONING_EFFORT`. Leave `BACKUP_LLM_MODEL` empty to disable it. Prewarm never uses it; the demo cache holds main-model output only.
 8. Keep prompts small (free tier is ~8K tokens/min). Every LLM call goes through the cache. `DEMO_MODE=replay` serves cache only and the UI shows a banner.
 9. Tests never call the network. Mock the provider.
 
