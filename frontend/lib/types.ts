@@ -4,11 +4,17 @@ export type Route = "AUTO_CLEAR" | "NEEDS_REVIEW" | "PENDING_APPROVAL";
 export type Actor = "CODE" | "LLM" | "HUMAN";
 export type Gate = "AUTO_COMMITTED" | "AWAITING_ANALYST" | "AWAITING_APPROVAL" | "ALREADY_RESOLVED";
 
+export type Role = "ANALYST" | "COMPLIANCE_OFFICER";
+export type Action = "CLEAR" | "HOLD_AND_BLOCK" | "ESCALATE";
+
 export interface Health {
   status: string;
-  demo_mode: "live" | "replay";
+  demo_mode: "live" | "replay" | "off";
   guard_model: string | null;
   guard_live: boolean;
+  investigator_model: string | null;
+  investigator_live: boolean;
+  backup_model: string | null;
   cache_entries: number;
   threshold_aed: number;
 }
@@ -154,6 +160,7 @@ export interface Evidence {
   velocity: { record_id: string; txn_count_24h: number; amount_24h: number; new_payees_24h: number } | null;
   complete: boolean;
   record_ids: string[];
+  calls: TimelineCall[];
 }
 
 export interface Reason {
@@ -166,8 +173,10 @@ export interface Approval {
   record_id: string;
   alert_id: string;
   actor: string;
-  role: string;
+  role: Role;
   decision: "APPROVE" | "REJECT" | "MORE_INFO";
+  action: Action | null;
+  override: boolean;
   reason: string;
   ts: string;
 }
@@ -175,7 +184,7 @@ export interface Approval {
 export interface Resolution {
   record_id: string;
   alert_id: string;
-  action: "CLEAR" | "HOLD_AND_BLOCK" | "ESCALATE";
+  action: Action;
   route: Route;
   approval_id: string | null;
   ts: string;
@@ -253,4 +262,87 @@ export interface CaseDetail {
   run: CaseRun | null;
   approval: Approval | null;
   resolution: Resolution | null;
+}
+
+export interface SentenceCheck {
+  section: string;
+  source: "CODE" | "LLM";
+  text: string;
+  record_ids: string[];
+  accepted: boolean;
+  reason: "UNCITED" | "UNKNOWN_RECORD" | "IDENTITY_IN_NARRATIVE" | "EMPTY" | null;
+}
+
+export interface Report {
+  case_id: string;
+  template_version: string;
+  markdown: string;
+  sentences: SentenceCheck[];
+  accepted: number;
+  rejected: number;
+  llm_rejected: number;
+  verifier_passed: boolean;
+}
+
+export interface RecordOut {
+  record_id: string;
+  table: string;
+  row: Record<string, string | number | boolean | null>;
+  withheld_columns: string[];
+}
+
+export interface AuditEntry {
+  seq: number;
+  record_id: string;
+  ts: string;
+  alert_id: string | null;
+  kind: string;
+  actor: string;
+  payload: Record<string, unknown>;
+  prev_hash: string;
+  hash: string;
+}
+
+export interface AuditVerify {
+  ok: boolean;
+  entries: number;
+  head_record_id: string | null;
+  head_hash: string;
+  first_bad_record_id: string | null;
+  reason: "SEQUENCE_GAP" | "PREV_HASH_MISMATCH" | "HASH_MISMATCH" | "ANCHOR_NOT_FOUND" | null;
+}
+
+export interface CaseTimeline {
+  alert_id: string;
+  steps: TimelineStep[];
+}
+
+export interface Filing {
+  filing_id: string;
+  status: string;
+  report_sha256: string;
+  approval_id: string;
+  cited_record_ids: string[];
+  audit_hash: string;
+}
+
+export interface IngestIn {
+  customer_id: string;
+  device_id?: string | null;
+  amount: number;
+  currency: string;
+  channel: "mobile" | "web" | "branch";
+  country?: string;
+  payee_name?: string | null;
+  payee_account?: string | null;
+  payee_known?: boolean;
+  memo?: string | null;
+  ts?: string | null;
+}
+
+export interface DecisionOut {
+  approval: Approval;
+  resolution: Resolution | null;
+  status: "COMMITTED" | "REJECTED" | "AWAITING_INFO";
+  override: boolean;
 }

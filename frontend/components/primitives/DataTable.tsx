@@ -1,0 +1,123 @@
+"use client";
+
+import { useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
+import { cx } from "@/lib/cx";
+import { TONE_BG, type Tone } from "@/lib/labels";
+
+export interface Column<T> {
+  key: string;
+  header: ReactNode;
+  /** CSS grid track, e.g. "120px" or "1fr". */
+  width: string;
+  align?: "start" | "end" | "center";
+  mono?: boolean;
+  render: (row: T) => ReactNode;
+}
+
+const ROW = 32;
+const OVERSCAN = 8;
+
+/**
+ * Dense table with a sticky header, a left status bar per row and windowed rendering (fixed 32px rows),
+ * so 1,000 rows stay cheap. Arrow keys move focus between rows; Enter activates.
+ */
+export function DataTable<T>({
+  rows,
+  columns,
+  rowKey,
+  rowTone,
+  onRowActivate,
+  height = 480,
+  label,
+  empty,
+  className,
+}: {
+  rows: T[];
+  columns: Column<T>[];
+  rowKey: (row: T) => string;
+  rowTone?: (row: T) => Tone | null;
+  onRowActivate?: (row: T) => void;
+  height?: number;
+  label: string;
+  empty?: ReactNode;
+  className?: string;
+}) {
+  const scroller = useRef<HTMLDivElement>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const template: CSSProperties = { gridTemplateColumns: columns.map((c) => c.width).join(" ") };
+
+  const bodyHeight = height - ROW;
+  const first = Math.max(0, Math.floor(scrollTop / ROW) - OVERSCAN);
+  const last = Math.min(rows.length, Math.ceil((scrollTop + bodyHeight) / ROW) + OVERSCAN);
+  const visible = rows.slice(first, last);
+
+  function onKey(e: KeyboardEvent<HTMLDivElement>, index: number, row: T) {
+    if (e.key === "Enter" && onRowActivate) {
+      e.preventDefault();
+      onRowActivate(row);
+      return;
+    }
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    e.preventDefault();
+    const next = Math.max(0, Math.min(rows.length - 1, index + (e.key === "ArrowDown" ? 1 : -1)));
+    const el = scroller.current;
+    if (!el) return;
+    if (next * ROW < el.scrollTop) el.scrollTop = next * ROW;
+    if ((next + 1) * ROW > el.scrollTop + bodyHeight) el.scrollTop = (next + 1) * ROW - bodyHeight;
+    requestAnimationFrame(() => el.querySelector<HTMLElement>(`[data-row="${next}"]`)?.focus());
+  }
+
+  const align = (a?: Column<T>["align"]) => (a === "end" ? "justify-end text-end" : a === "center" ? "justify-center" : "");
+
+  return (
+    <div role="table" aria-label={label} aria-rowcount={rows.length + 1}
+      className={cx("flex flex-col border border-hairline bg-surface", className)}>
+      <div role="row" style={template}
+        className="grid h-8 shrink-0 items-center border-b border-hairline-strong bg-raised ps-3 pe-2">
+        {columns.map((c) => (
+          <div key={c.key} role="columnheader"
+            className={cx("flex min-w-0 px-1 text-2xs font-medium uppercase tracking-[0.08em] text-muted", align(c.align))}>
+            {c.header}
+          </div>
+        ))}
+      </div>
+      {rows.length === 0 ? (
+        <div className="p-3">{empty}</div>
+      ) : (
+        <div ref={scroller} style={{ height: bodyHeight }} className="relative overflow-y-auto"
+          onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}>
+          <div style={{ height: rows.length * ROW }} className="relative">
+            {visible.map((row, i) => {
+              const index = first + i;
+              const tone = rowTone?.(row);
+              return (
+                <div
+                  key={rowKey(row)}
+                  role="row"
+                  aria-rowindex={index + 2}
+                  data-row={index}
+                  tabIndex={onRowActivate ? (index === 0 ? 0 : -1) : undefined}
+                  onClick={onRowActivate ? () => onRowActivate(row) : undefined}
+                  onKeyDown={(e) => onKey(e, index, row)}
+                  style={{ ...template, top: index * ROW, height: ROW }}
+                  className={cx(
+                    "absolute inset-x-0 grid items-center border-b border-hairline ps-3 pe-2 text-sm outline-none",
+                    onRowActivate && "cursor-pointer hover:bg-raised focus-visible:bg-raised",
+                  )}
+                >
+                  {tone && <span aria-hidden className={cx("absolute inset-y-0 start-0 w-0.5", TONE_BG[tone])} />}
+                  {columns.map((c) => (
+                    <div key={c.key} role="cell"
+                      className={cx("flex min-w-0 items-center truncate px-1", c.mono && "num", align(c.align))}>
+                      {c.render(row)}
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

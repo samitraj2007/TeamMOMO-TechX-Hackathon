@@ -1,11 +1,20 @@
 import type {
+  Action,
   Approval,
+  AuditEntry,
+  AuditVerify,
   CaseDetail,
   CaseRun,
   CaseSummary,
+  CaseTimeline,
+  DecisionOut,
+  Filing,
   Health,
+  IngestIn,
+  RecordOut,
+  Report,
   Resolution,
-  TimelineStep,
+  Role,
   TransactionRun,
   TransactionSummary,
 } from "./types";
@@ -40,42 +49,41 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   return r.json() as Promise<T>;
 }
 
+const post = (body?: unknown): RequestInit => ({
+  method: "POST",
+  body: body === undefined ? undefined : JSON.stringify(body),
+});
+
 export const api = {
   health: () => req<Health>("/health"),
-  cases: () => req<CaseSummary[]>("/cases"),
+  cases: (all = false) => req<CaseSummary[]>(`/cases${all ? "?all=true" : ""}`),
   caseDetail: (id: string) => req<CaseDetail>(`/cases/${id}`),
-  run: (id: string) => req<CaseRun>(`/cases/${id}/run`, { method: "POST" }),
+  run: (id: string) => req<CaseRun>(`/cases/${id}/run`, post()),
+  timeline: (id: string) => req<CaseTimeline>(`/cases/${id}/timeline`),
+  report: (id: string) => req<Report>(`/cases/${id}/report`),
+  caseAudit: (id: string) => req<AuditEntry[]>(`/cases/${id}/audit`),
+  verifyAudit: (anchor?: string) => req<AuditVerify>(`/audit/verify${anchor ? `?anchor=${anchor}` : ""}`),
+  record: (id: string) => req<RecordOut>(`/records/${id}`),
+  commit: (id: string, action: Resolution["action"]) => req<Resolution>(`/cases/${id}/commit`, post({ action })),
+  decide: (
+    id: string,
+    body: { decision: Approval["decision"]; action?: Action; reason: string; role: Role; actor: string },
+  ) => req<DecisionOut>(`/cases/${id}/decision`, post(body)),
+  fileReport: (id: string, actor: string, role: Role = "COMPLIANCE_OFFICER") =>
+    req<Filing>(`/cases/${id}/file-report`, post({ actor, role })),
   transactions: (params: { alerted?: boolean; limit?: number; offset?: number } = {}) => {
     const q = new URLSearchParams(
       Object.entries(params).flatMap(([k, v]) => (v === undefined ? [] : [[k, String(v)]])),
     );
     return req<TransactionSummary[]>(`/transactions?${q}`);
   },
-  runTransaction: (txnId: string) => req<TransactionRun>(`/transactions/${txnId}/run`, { method: "POST" }),
-  commit: (id: string, action: Resolution["action"]) =>
-    req<Resolution>(`/cases/${id}/commit`, { method: "POST", body: JSON.stringify({ action }) }),
-  decide: (id: string, body: { decision: Approval["decision"]; action: Resolution["action"]; reason: string }) =>
-    req<{
-      approval: Approval;
-      resolution: Resolution | null;
-      status: "COMMITTED" | "REJECTED" | "AWAITING_INFO";
-      override: boolean;
-    }>(`/cases/${id}/decision`, {
-      method: "POST",
-      body: JSON.stringify({ ...body, actor: "officer.demo" }),
-    }),
-  timeline: (id: string) => req<{ alert_id: string; steps: TimelineStep[] }>(`/cases/${id}/timeline`),
-  fileReport: (id: string, actor = "officer.demo") =>
-    req<{
-      filing_id: string;
-      status: string;
-      report_sha256: string;
-      approval_id: string;
-      cited_record_ids: string[];
-      audit_hash: string;
-    }>(`/cases/${id}/file-report`, { method: "POST", body: JSON.stringify({ actor, role: "COMPLIANCE_OFFICER" }) }),
+  runTransaction: (txnId: string) => req<TransactionRun>(`/transactions/${txnId}/run`, post()),
+  ingest: (body: IngestIn) => req<{ alert_id: string; txn_id: string; run: CaseRun }>("/cases/ingest", post(body)),
   reset: (adminToken: string) =>
-    req<{ status: string }>("/demo/reset", { method: "POST", headers: { "X-Admin-Token": adminToken } }),
+    req<{ status: string; counts: Record<string, number>; previous_audit_head: AuditVerify }>("/demo/reset", {
+      method: "POST",
+      headers: { "X-Admin-Token": adminToken },
+    }),
 };
 
 export function errorMessage(e: unknown): string {

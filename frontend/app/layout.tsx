@@ -1,15 +1,19 @@
 import type { Metadata } from "next";
+import { geist, jetbrainsMono, plexArabic } from "@/lib/fonts";
+import { Providers } from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "MOMO Sentinel",
-  description: "AI fraud investigator a bank can trust with attacker-written text.",
+  title: "GulfHorizon · MOMO Sentinel",
+  description: "Payment triage that a bank can trust with attacker-written text.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className="h-full antialiased">
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="en" className={`${geist.variable} ${jetbrainsMono.variable} ${plexArabic.variable} h-full`}>
+      <body className="app-backdrop min-h-full flex flex-col">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

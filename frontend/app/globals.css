@@ -1,42 +1,170 @@
 @import "tailwindcss";
 
+/* Obsidian Ledger tokens. Frozen in UI step 2; see docs/UI_PLAN.md. */
 @theme {
-  --color-ink: #0b0f14;
-  --color-panel: #111821;
-  --color-panel-2: #16202b;
-  --color-line: #233140;
-  --color-fg: #d9e1ea;
-  --color-muted: #8796a8;
-  --color-faint: #5b6878;
-  --color-clear: #3ecf8e;
-  --color-review: #f5a524;
-  --color-approve: #f2555a;
-  --color-llm: #8ab4ff;
-  --color-human: #e6c36a;
+  --color-bg: #0a0e0c;
+  --color-surface: #0f1512;
+  --color-raised: #141c17;
+  --color-overlay: #19231d;
+  --color-hairline: #213028;
+  --color-hairline-strong: #2e4237;
+  --color-text: #d6e0d9;
+  --color-muted: #7b8b82;
+  --color-sage: #6e9b83;
+  --color-amber: #c9a24a;
+  --color-red: #b5524a;
+  --color-red-text: #d27a70;
+  --color-model: #7c9db8;
+  --color-human: #c8b47a;
 
-  --font-sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, "Noto Sans Arabic", Tahoma, sans-serif;
-  --font-mono: "Cascadia Mono", ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  /* Phase-0 aliases, removed when /case/[id] is rebuilt in step 3. */
+  --color-ink: #0a0e0c;
+  --color-panel: #0f1512;
+  --color-panel-2: #141c17;
+  --color-line: #213028;
+  --color-fg: #d6e0d9;
+  --color-faint: #6a7a71;
+  --color-clear: #6e9b83;
+  --color-review: #c9a24a;
+  --color-approve: #b5524a;
+  --color-llm: #7c9db8;
+
+  --radius-xs: 1px;
+  --radius-sm: 2px;
+  --radius-md: 2px;
+  --radius-lg: 2px;
+  --radius-xl: 2px;
+  --radius-2xl: 2px;
+  --radius-3xl: 2px;
+  --radius-4xl: 2px;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+
+  --text-2xs: 11px;
+  --text-2xs--line-height: 16px;
+  --text-xs: 12px;
+  --text-xs--line-height: 16px;
+  --text-sm: 13px;
+  --text-sm--line-height: 20px;
+  --text-base: 14px;
+  --text-base--line-height: 20px;
+  --text-md: 16px;
+  --text-md--line-height: 24px;
+  --text-lg: 20px;
+  --text-lg--line-height: 28px;
+  --text-xl: 28px;
+  --text-xl--line-height: 36px;
+
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-html,
-body {
-  background: var(--color-ink);
-  color: var(--color-fg);
+@theme inline {
+  --font-sans: var(--font-geist), var(--font-plex-arabic), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --font-arabic: var(--font-plex-arabic), var(--font-geist), system-ui, sans-serif;
+}
+
+html {
+  background: var(--color-bg);
+  color: var(--color-text);
+  color-scheme: dark;
 }
 
 body {
   font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 20px;
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* App background only: static film grain and a faint 8px grid. */
+.app-backdrop {
+  background-color: var(--color-bg);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.03 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(to right, rgb(110 155 131 / 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(110 155 131 / 0.04) 1px, transparent 1px);
+  background-size: 160px 160px, 8px 8px, 8px 8px;
+}
+
+.font-mono,
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums slashed-zero;
+  font-feature-settings: "tnum", "zero";
+}
+
+.ar,
+:lang(ar) {
+  font-family: var(--font-arabic);
+  font-size: calc(1em + 2px);
+  line-height: 1.7;
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-llm);
-  outline-offset: 2px;
+  outline: 1px solid var(--color-sage);
+  outline-offset: 1px;
+  border-radius: 2px;
 }
 
+::selection {
+  background: rgb(110 155 131 / 0.35);
+  color: var(--color-text);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-hairline-strong) transparent;
+}
+
+/* Diagonal hairline hatch used for neutralised text and blocked states (a texture, not a decorative gradient). */
+.hatch {
+  background-image: repeating-linear-gradient(135deg, rgb(181 82 74 / 0.22) 0 1px, transparent 1px 6px);
+}
+
+.hatch-muted {
+  background-image: repeating-linear-gradient(135deg, rgb(123 139 130 / 0.14) 0 1px, transparent 1px 6px);
+}
+
+/* Square range input (airlock scrubber). */
+.airlock-scrub {
+  appearance: none;
+  height: 12px;
+  background: transparent;
+}
+.airlock-scrub::-webkit-slider-runnable-track {
+  height: 2px;
+  background: var(--color-hairline-strong);
+}
+.airlock-scrub::-moz-range-track {
+  height: 2px;
+  background: var(--color-hairline-strong);
+}
+.airlock-scrub::-webkit-slider-thumb {
+  appearance: none;
+  width: 8px;
+  height: 12px;
+  margin-top: -5px;
+  border: 1px solid var(--color-sage);
+  border-radius: 0;
+  background: var(--color-bg);
+}
+.airlock-scrub::-moz-range-thumb {
+  width: 8px;
+  height: 12px;
+  border: 1px solid var(--color-sage);
+  border-radius: 0;
+  background: var(--color-bg);
+}
+
+/* Phase-0 case screen helpers, removed in step 3. */
 @keyframes momo-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
@@ -44,33 +172,23 @@ body {
   }
 }
 
-@keyframes momo-sweep {
-  from {
-    background-size: 0% 100%;
-  }
-  to {
-    background-size: 100% 100%;
-  }
-}
-
 .reveal {
-  animation: momo-in 320ms ease-out both;
+  animation: momo-in 180ms var(--ease-out) both;
 }
 
 .hostile-span {
-  background-color: transparent;
-  background-image: linear-gradient(rgba(242, 85, 90, 0.35), rgba(242, 85, 90, 0.35));
-  background-repeat: no-repeat;
-  background-size: 100% 100%;
-  animation: momo-sweep 700ms ease-out both;
-  box-shadow: inset 0 -2px 0 var(--color-approve);
-  color: #ffd9da;
-  border-radius: 2px;
+  background: rgb(181 82 74 / 0.28);
+  box-shadow: inset 0 -1px 0 var(--color-red);
+  color: #f1d3cf;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .reveal,
-  .hostile-span {
-    animation: none;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

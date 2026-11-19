@@ -476,7 +476,13 @@ function GatePanel({ id, run, detail, onChanged }: { id: string; run: CaseRun; d
     setBusy(true);
     setErr(null);
     try {
-      await api.decide(id, { decision, action: "HOLD_AND_BLOCK", reason });
+      await api.decide(id, {
+        decision,
+        action: "HOLD_AND_BLOCK",
+        reason,
+        role: "COMPLIANCE_OFFICER",
+        actor: "officer.demo",
+      });
       onChanged();
     } catch (e) {
       setErr(errorMessage(e));
