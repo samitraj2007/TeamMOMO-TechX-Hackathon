@@ -4,7 +4,9 @@ AI fraud investigator a bank can trust with attacker-written text. The model inv
 
 TechX Hackathon (IEEE SIU Dubai), Domain 1: FinTech Fraud & Compliance. Team MOMO. Synthetic data, simulation only.
 
-- Spec: [MASTER_SPEC.md](MASTER_SPEC.md) - Rules: [RULES.md](RULES.md) - Docs: [docs/](docs/)
+- Spec: [MASTER_SPEC.md](MASTER_SPEC.md) - Rules: [RULES.md](RULES.md) - Docs: [docs/](docs/) - Phases: [docs/PHASE_PLAN.md](docs/PHASE_PLAN.md)
+
+**Status:** Phase 0 (thin vertical slice) green and tagged `phase-0-slice`. Phase 1 not started.
 
 ## Run locally (Windows PowerShell)
 
@@ -27,7 +29,7 @@ npm run dev   # http://localhost:3000
 ## Demo day
 
 ```powershell
-python scripts/prewarm.py          # fills backend/data/llm_cache.json via Prompt Guard (needs GROQ_API_KEY); commit it
+python scripts/prewarm.py --all    # fills backend/data/llm_cache.json via Prompt Guard (needs GROQ_API_KEY); paced, retries 429s; commit it
 powershell -ExecutionPolicy Bypass -File scripts\demo.ps1   # backend + production frontend
 python scripts/smoke.py            # must print ALL PASS
 ```

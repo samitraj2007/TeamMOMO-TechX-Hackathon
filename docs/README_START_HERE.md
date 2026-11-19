@@ -24,5 +24,7 @@ Read order for the AI model: 00_KICKOFF_PROMPT -> MASTER_SPEC -> RULES -> docs/0
 | docs/05_FRONTEND_DESIGN_SPEC.md | UI structure, design principles, i18n/RTL |
 | docs/06_DEPLOYMENT_SPEC.md | Free-tier hosting, env, demo reliability |
 | docs/07_PITCH_AND_DEMO.md | 3-5 minute pitch, demo script, Q&A |
-| docs/08_TASKS_MILESTONES.md | Phases, task board, roles |
+| docs/08_TASKS_MILESTONES.md | Phases, task board, roles (superseded by PHASE_PLAN.md where they differ) |
+| docs/PHASE_PLAN.md | Approved phase plan, transition checklists, current status |
+| docs/DEMO_SCRIPT.md | 60-second demo script for 20 Nov |
 | docs/09_OPEN_QUESTIONS_AND_ASSUMPTIONS.md | What we still need to confirm |

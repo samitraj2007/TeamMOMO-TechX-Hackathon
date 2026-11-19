@@ -90,7 +90,7 @@ This file follows the approved plan in every row.
 | Console | Three lanes in Phase 1 | "Queue and case UI" |
 | Replay mode | Phase 0 (built) | Phase 3 |
 | Hour estimates | Phase 1 ~9h, Phase 2 ~8h, Phase 3 ~5h, Phase 5 ~3h | None |
-| Phase 0 tag | `v0-demo` (now `phase-0-slice` per the team's instruction) | "Tag each green phase" |
+| Phase 0 tag | `v0-demo` (shipped as `v0-slice`, then `phase-0-slice` per the team's instruction) | "Tag each green phase" |
 | Cut order | Adds a Phase 0 demo-night cut list | One global cut list |
 
 Implementation deviations from the plan text (already built, intentional):
@@ -109,9 +109,28 @@ Updated at the Phase 0 -> Phase 1 handoff, 19 Nov 2026.
 | T2 | Done. `pytest` 128 passed; `npm run typecheck` clean |
 | T3 | Done. 100/100 cases, 76 unique calls, 0 failures, 0 429s, 158 s; cache holds only hash/score/model/version/ts |
 | T4 | Done. `.env` ignored and untracked; Groq key prefix absent from tracked files and all history |
-| T5 | _pending_ |
-| T6 | _pending_ |
+| T5 | Done. `main`, `phase-0-slice` and `v0-slice` pushed to github.com/samitraj2007/TeamMOMO-TechX-Hackathon |
+| T6 | Done. This file, README status, DEMO_SCRIPT (honest classifier line), 08 pointer, 09 Q6 |
 | T7 | Open (human) |
 | T8 | Open (human) |
 | T9 | Open (human) |
 | T10 | Open (human) |
+
+### Known gaps carried into Phase 1
+- **Prompt Guard misses two of our attacks.** Hero memo B scores 0.193 (below the 0.5 threshold) and the payee-name
+  injection G scores 0.001; regex catches both, so routing is unaffected (strictest wins). C, F and H score 0.999.
+  The demo script now says this out loud instead of claiming the classifier caught B. Do not tune the threshold to
+  hide it; it is evidence for the scorecard in Phase 2.
+- Prompt Guard sees each free-text field whole; a short prefix like "Payment for Invoice #992." dilutes the score.
+  Scoring sentence-level chunks is a candidate fix to measure in Phase 2, not to ship blind.
+- The 3-column `xl` layout has not been checked on a 1280 px+ screen; dev-mode hydration warning from browser
+  extensions (use production mode for the demo).
+- Investigator step is a `SKIPPED` placeholder; no report or citation verifier yet (Phase 1 by design).
+
+### Proposed first step of Phase 1 (not started)
+Investigator contract and replayable call, before any tool loop: define `InvestigatorInput` (MemoFacts + evidence
+records only, no raw text) and `InvestigatorOutput` (recommendation, cited record IDs, summary), call
+`GROQ_MODEL_MAIN` once per pinned case through the same JSON cache (prompt version, low reasoning effort, small
+prompt), and test that (a) no raw free-text reaches the prompt, (b) the output can only make the route stricter,
+(c) every cited ID exists in the evidence, (d) replay mode serves it offline. This exercises the 8K TPM limit early
+and keeps cases A, B, D green at every commit.

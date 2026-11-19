@@ -17,6 +17,8 @@
 4. Are we allowed to use hosted APIs during judged demos, or must everything be local? Is internet guaranteed at the venue?
 5. Laptop specs for local Ollama (RAM, GPU)? Which qwen3 size runs acceptably?
 6. Do the Groq models (including Prompt Guard 2) and rate limits match our assumptions in the current console?
+   PARTLY ANSWERED 19 Nov: Prompt Guard 2 on Groq returns a bare probability as message content; its headers
+   report 14,400 requests/day and 15,000 tokens/min. Limits for `GROQ_MODEL_MAIN`/`LIGHT` not yet checked.
 7. Confirm product name and pitch line, and whether to keep the two edge bets (memo quarantine, Arabic-aware matcher).
 8. Confirm the human workflow: three lanes, single approver, auditor replay tab.
 9. Visual direction: which reference UIs inspire us? (Collected after backend is solid.)

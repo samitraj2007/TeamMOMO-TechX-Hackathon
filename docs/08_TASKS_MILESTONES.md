@@ -1,5 +1,8 @@
 # 08 Tasks and Milestones
 
+> The approved plan lives in [PHASE_PLAN.md](PHASE_PLAN.md). Where the two differ, PHASE_PLAN.md wins; the
+> differences are listed there.
+
 Dates: today 19 Nov 2026 (Thu). First demo 20 Nov 2026. Remaining schedule unknown; the planning model must map phases to the real schedule once the team provides it.
 
 ## Roles (placeholder - confirm names)
