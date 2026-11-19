@@ -1,14 +1,17 @@
 import threading
 from typing import Literal
 
-from fastapi import Depends, FastAPI, HTTPException, Path
+from fastapi import Depends, FastAPI, HTTPException, Path, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from backend.app.agents.cache import JsonCache
 from backend.app.agents.investigator import Investigator, build_investigator
 from backend.app.config import get_settings
 from backend.app.db import connect, ensure_seeded
+from backend.app.ingest import MAX_BODY_BYTES, IngestIn
+from backend.app.ingest import store as store_ingested
 from backend.app.pipeline import CaseRun, free_text_fields, load_case, run_case
 from backend.app.reports.builder import Report, build_report
 from backend.app.schemas import Action, Approval, Resolution, Route
@@ -168,6 +171,42 @@ def run(alert_id: str, conn=Depends(get_conn)):
         result = run_case(conn, alert_id, get_guard(), settings.aed_block_threshold, get_investigator())
     _runs[alert_id] = result
     return result
+
+
+class IngestOut(BaseModel):
+    alert_id: str
+    txn_id: str
+    run: CaseRun
+
+
+def _ingest_sync(body: IngestIn) -> IngestOut:
+    ensure_seeded()
+    conn = connect()
+    try:
+        with _db_lock:
+            alert_id, txn_id = store_ingested(conn, body)
+            result = run_case(conn, alert_id, get_guard(), settings.aed_block_threshold, get_investigator())
+        _runs[alert_id] = result
+        return IngestOut(alert_id=alert_id, txn_id=txn_id, run=result)
+    finally:
+        conn.close()
+
+
+@app.post("/cases/ingest", response_model=IngestOut, status_code=201)
+async def ingest(request: Request):
+    """Run the full pipeline on an unseen transaction. Malformed input: 413/422, nothing stored."""
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > MAX_BODY_BYTES:
+        raise HTTPException(413, f"Body over {MAX_BODY_BYTES} bytes")
+    raw = await request.body()
+    if len(raw) > MAX_BODY_BYTES:
+        raise HTTPException(413, f"Body over {MAX_BODY_BYTES} bytes")
+    try:
+        body = IngestIn.model_validate_json(raw)
+    except ValidationError as e:
+        errors = [{"loc": list(err["loc"]), "msg": err["msg"], "type": err["type"]} for err in e.errors()]
+        raise HTTPException(422, errors)
+    return await run_in_threadpool(_ingest_sync, body)
 
 
 @app.post("/cases/{alert_id}/decision", response_model=DecisionOut)

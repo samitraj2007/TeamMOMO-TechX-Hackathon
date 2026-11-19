@@ -22,6 +22,9 @@ out/
 next-env.d.ts
 *.tsbuildinfo
 
+# logs
+*.log
+
 # os / editor
 .DS_Store
 Thumbs.db

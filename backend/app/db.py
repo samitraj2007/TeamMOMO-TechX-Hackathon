@@ -17,8 +17,8 @@ CREATE TABLE watchlist (
   dob TEXT, nationality TEXT, list_name TEXT
 );
 CREATE TABLE transactions (
-  record_id TEXT PRIMARY KEY, customer_id TEXT NOT NULL REFERENCES customers(record_id),
-  device_id TEXT NOT NULL REFERENCES devices(record_id), amount REAL NOT NULL, currency TEXT NOT NULL,
+  record_id TEXT PRIMARY KEY, customer_id TEXT NOT NULL,
+  device_id TEXT, amount REAL NOT NULL, currency TEXT NOT NULL,
   channel TEXT, payee_name TEXT, payee_account TEXT, payee_known INTEGER NOT NULL, memo TEXT,
   ip TEXT, country TEXT, ts TEXT,
   is_fraud INTEGER NOT NULL, scenario TEXT NOT NULL, expected_route TEXT NOT NULL,
@@ -41,9 +41,9 @@ CREATE TABLE resolutions (
   record_id TEXT PRIMARY KEY, alert_id TEXT NOT NULL, action TEXT NOT NULL,
   route TEXT NOT NULL, approval_id TEXT, ts TEXT NOT NULL
 );
-PRAGMA user_version = 2;
+PRAGMA user_version = 3;
 """
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 
 def connect(path: Path | None = None) -> sqlite3.Connection:
