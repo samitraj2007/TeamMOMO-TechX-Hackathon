@@ -38,7 +38,7 @@ class Device(BaseModel):
 class KycDevicesResult(BaseModel):
     customer: Customer
     devices: list[Device]
-    txn_device: Device
+    txn_device: Device | None
     device_known_and_verified: bool
     record_ids: list[str]
 

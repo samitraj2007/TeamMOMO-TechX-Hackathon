@@ -1,7 +1,7 @@
 import threading
 from typing import Literal
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Path
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -10,6 +10,7 @@ from backend.app.agents.investigator import Investigator, build_investigator
 from backend.app.config import get_settings
 from backend.app.db import connect, ensure_seeded
 from backend.app.pipeline import CaseRun, free_text_fields, load_case, run_case
+from backend.app.reports.builder import Report, build_report
 from backend.app.schemas import Approval, Resolution, Route
 from backend.app.security.classifier import Guard, build_guard
 from backend.app.services.case_resolution import (ApprovalRequired, commit_case_resolution, latest_approval,
@@ -192,6 +193,43 @@ def commit(alert_id: str, body: CommitIn, conn=Depends(get_conn)):
             return commit_case_resolution(conn, alert_id, run_result.decision.route, body.action)
     except ApprovalRequired as e:
         raise HTTPException(403, str(e))
+
+
+RECORD_TABLES = {"TXN": "transactions", "CUS": "customers", "DEV": "devices", "WL": "watchlist",
+                 "VEL": "velocity_logs", "ALT": "alerts", "APR": "approvals", "RES": "resolutions"}
+EVAL_LABEL_COLUMNS = ("is_fraud", "scenario", "expected_route", "injection_family", "demo_tag")
+
+
+class RecordOut(BaseModel):
+    record_id: str
+    table: str
+    row: dict
+    withheld_columns: list[str] = Field(description="Synthetic ground-truth labels used only for evaluation")
+
+
+@app.get("/records/{record_id}", response_model=RecordOut)
+def get_record(record_id: str = Path(pattern=r"^[A-Z]{2,4}-\d{3,6}$"), conn=Depends(get_conn)):
+    """The raw bank record behind any citation in a report. Display only; never sent to a model."""
+    table = RECORD_TABLES.get(record_id.split("-")[0])
+    row = conn.execute(f"SELECT * FROM {table} WHERE record_id = ?", (record_id,)).fetchone() if table else None
+    if row is None:
+        raise HTTPException(404, f"Unknown record {record_id}")
+    data = dict(row)
+    withheld = [c for c in EVAL_LABEL_COLUMNS if c in data]
+    for c in withheld:
+        data.pop(c)
+    return RecordOut(record_id=record_id, table=table, row=data, withheld_columns=withheld)
+
+
+@app.get("/cases/{alert_id}/report", response_model=Report)
+def get_report(alert_id: str, conn=Depends(get_conn)):
+    _load(conn, alert_id)
+    run_result = _runs.get(alert_id)
+    if run_result is None:
+        raise HTTPException(409, "Run the case before requesting its report")
+    res = conn.execute("SELECT * FROM resolutions WHERE alert_id = ? ORDER BY record_id DESC LIMIT 1",
+                       (alert_id,)).fetchone()
+    return build_report(conn, run_result, latest_approval(conn, alert_id), Resolution(**dict(res)) if res else None)
 
 
 @app.post("/demo/reset")

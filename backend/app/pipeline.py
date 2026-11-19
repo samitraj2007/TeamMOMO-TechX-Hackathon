@@ -10,10 +10,11 @@ from pydantic import BaseModel
 from backend.app.agents.investigator import (EvidenceRecord, Investigator, InvestigatorInput, InvestigatorResult,
                                              PolicyFacts)
 from backend.app.policy.engine import PolicyConfig, PolicyInput, decide
+from backend.app.reports.builder import Report, build_report, identities, verify_findings
 from backend.app.schemas import ActorType, KycDevicesResult, Resolution, Route, SanctionsResult, Velocity
 from backend.app.security.classifier import Guard
 from backend.app.security.quarantine import QuarantineResult, quarantine
-from backend.app.services.case_resolution import commit_case_resolution
+from backend.app.services.case_resolution import commit_case_resolution, latest_approval
 from backend.app.services.kyc_devices import RecordNotFound, fetch_customer_kyc_and_devices
 from backend.app.services.sanctions import check_sanctions_watchlist
 from backend.app.services.velocity import fetch_velocity
@@ -64,6 +65,7 @@ class CaseRun(BaseModel):
     resolution: Resolution | None
     gate: Literal["AUTO_COMMITTED", "AWAITING_ANALYST", "AWAITING_APPROVAL", "ALREADY_RESOLVED"]
     total_ms: int
+    report: Report | None = None
 
 
 def _ms(t0: float) -> int:
@@ -115,16 +117,17 @@ def _gather_evidence(conn: sqlite3.Connection, txn: dict) -> Evidence:
 def evidence_records(txn: dict, ev: Evidence) -> list[EvidenceRecord]:
     """Typed view of the evidence for the investigator. Names, DOBs, labels and notes are deliberately absent."""
     recs = [EvidenceRecord(record_id=txn["record_id"], kind="TRANSACTION", facts={
-        "amount": txn["amount"], "currency": txn["currency"], "channel": txn["channel"], "country": txn["country"]})]
+        "amount": txn["amount"], "currency": txn["currency"], "channel": txn["channel"], "country": txn["country"],
+        "payee_known": bool(txn["payee_known"]),
+        "device_on_file": bool(ev.kyc and ev.kyc.txn_device is not None)})]
     if ev.kyc is not None:
         c = ev.kyc.customer
         recs.append(EvidenceRecord(record_id=c.record_id, kind="CUSTOMER", facts={
             "segment": c.segment, "kyc_status": c.kyc_status, "risk_rating": c.risk_rating,
             "nationality": c.nationality, "devices_on_file": len(ev.kyc.devices)}))
-        d = ev.kyc.txn_device
-        recs.append(EvidenceRecord(record_id=d.record_id, kind="DEVICE", facts={
-            "verified": d.verified, "first_seen": d.first_seen,
-            "known_to_customer": any(x.record_id == d.record_id for x in ev.kyc.devices)}))
+        if (d := ev.kyc.txn_device) is not None:
+            recs.append(EvidenceRecord(record_id=d.record_id, kind="DEVICE", facts={
+                "verified": d.verified, "first_seen": d.first_seen}))
     for subject, s in (("customer", ev.sanctions_customer), ("payee", ev.sanctions_payee)):
         for m in s.matches if s is not None else []:
             recs.append(EvidenceRecord(record_id=m.watchlist_id, kind="WATCHLIST_MATCH", facts={
@@ -203,11 +206,22 @@ def run_case(conn: sqlite3.Connection, alert_id: str, guard: Guard, threshold: f
     steps.append(_investigator_step(inv))
 
     t0 = time.perf_counter()
+    llm_checks = [] if inv.failed else verify_findings(inv, inv_input.record_ids(), identities(conn, ev.kyc, txn))
+    llm_rejected = sum(not c.accepted for c in llm_checks)
+    verifier_passed = None if inv.failed else inv.status == "ok" and llm_rejected == 0
+    steps.append(Step(key="verifier", label="Citation verifier", actor="CODE",
+                      status="SKIPPED" if inv.failed else ("FLAGGED" if not verifier_passed else "DONE"),
+                      duration_ms=_ms(t0),
+                      summary="no findings to verify" if inv.failed else
+                      f"{len(llm_checks) - llm_rejected}/{len(llm_checks)} model sentences cited"
+                      + (f" · {llm_rejected} rejected" if llm_rejected else "")))
+
+    t0 = time.perf_counter()
     decision = decide(dataclasses.replace(
         code_input,
         llm_recommendation=inv.output.recommendation if inv.output is not None and not inv.failed else None,
         investigator_failed=inv.failed,
-        verifier_passed=None if inv.failed else inv.status == "ok",
+        verifier_passed=verifier_passed,
     ), cfg)
     steps.append(Step(key="policy", label="Policy engine (pure Python)", actor="CODE",
                       status="FLAGGED" if decision.route != Route.AUTO_CLEAR else "DONE", duration_ms=_ms(t0),
@@ -233,9 +247,12 @@ def run_case(conn: sqlite3.Connection, alert_id: str, guard: Guard, threshold: f
                                "AWAITING_APPROVAL": "Held - compliance officer approval required before commit",
                                "ALREADY_RESOLVED": "Case already resolved"}[gate]))
 
-    return CaseRun(alert_id=alert_id, txn_id=txn["record_id"], steps=steps, quarantine=q, evidence=ev,
-                   investigator_input=inv_input, investigator=inv, code_route=code_decision.route,
-                   decision=DecisionOut(route=decision.route, threshold_aed=decision.threshold_aed,
-                                        reasons=[ReasonOut(code=r.code, route=r.route, detail=r.detail)
-                                                 for r in decision.reasons]),
-                   resolution=resolution, gate=gate, total_ms=_ms(t_total))
+    run = CaseRun(alert_id=alert_id, txn_id=txn["record_id"], steps=steps, quarantine=q, evidence=ev,
+                  investigator_input=inv_input, investigator=inv, code_route=code_decision.route,
+                  decision=DecisionOut(route=decision.route, threshold_aed=decision.threshold_aed,
+                                       reasons=[ReasonOut(code=r.code, route=r.route, detail=r.detail)
+                                                for r in decision.reasons]),
+                  resolution=resolution, gate=gate, total_ms=0)
+    run.report = build_report(conn, run, latest_approval(conn, alert_id), resolution)
+    run.total_ms = _ms(t_total)
+    return run

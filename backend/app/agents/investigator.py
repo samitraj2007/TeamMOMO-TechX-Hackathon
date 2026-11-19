@@ -19,7 +19,7 @@ from backend.app.schemas import Route
 from backend.app.security.classifier import backoff_seconds
 from backend.app.security.quarantine import MemoFacts
 
-PROMPT_VERSION = "inv-v1"
+PROMPT_VERSION = "inv-v2"
 MAX_PROMPT_CHARS = 4000
 MAX_COMPLETION_TOKENS = 700
 
