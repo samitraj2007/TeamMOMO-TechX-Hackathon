@@ -35,13 +35,15 @@ CREATE TABLE velocity_logs (
 );
 CREATE TABLE approvals (
   record_id TEXT PRIMARY KEY, alert_id TEXT NOT NULL, actor TEXT NOT NULL, role TEXT NOT NULL,
-  decision TEXT NOT NULL, reason TEXT NOT NULL, ts TEXT NOT NULL
+  decision TEXT NOT NULL, action TEXT, override INTEGER NOT NULL DEFAULT 0, reason TEXT NOT NULL, ts TEXT NOT NULL
 );
 CREATE TABLE resolutions (
   record_id TEXT PRIMARY KEY, alert_id TEXT NOT NULL, action TEXT NOT NULL,
   route TEXT NOT NULL, approval_id TEXT, ts TEXT NOT NULL
 );
+PRAGMA user_version = 2;
 """
+SCHEMA_VERSION = 2
 
 
 def connect(path: Path | None = None) -> sqlite3.Connection:
@@ -55,6 +57,14 @@ def ensure_seeded(path: Path | None = None) -> Path:
     from backend.data.generate import generate
 
     path = path or get_settings().db_file
-    if not path.exists():
+    if not path.exists() or _version(path) != SCHEMA_VERSION:
         generate(path)
     return path
+
+
+def _version(path: Path) -> int:
+    conn = sqlite3.connect(path)
+    try:
+        return conn.execute("PRAGMA user_version").fetchone()[0]
+    finally:
+        conn.close()

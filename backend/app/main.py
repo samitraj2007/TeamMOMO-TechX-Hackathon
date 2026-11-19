@@ -3,7 +3,7 @@ from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Path
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from backend.app.agents.cache import JsonCache
 from backend.app.agents.investigator import Investigator, build_investigator
@@ -11,10 +11,11 @@ from backend.app.config import get_settings
 from backend.app.db import connect, ensure_seeded
 from backend.app.pipeline import CaseRun, free_text_fields, load_case, run_case
 from backend.app.reports.builder import Report, build_report
-from backend.app.schemas import Approval, Resolution, Route
+from backend.app.schemas import Action, Approval, Resolution, Route
 from backend.app.security.classifier import Guard, build_guard
-from backend.app.services.case_resolution import (ApprovalRequired, commit_case_resolution, latest_approval,
-                                                  record_approval)
+from backend.app.services.case_resolution import (AlreadyResolved, ApprovalRequired, commit_case_resolution,
+                                                  gated_facts, is_override, latest_approval, latest_resolution,
+                                                  proposed_action, record_approval)
 from backend.app.services.kyc_devices import RecordNotFound
 
 settings = get_settings()
@@ -95,19 +96,23 @@ class CaseDetail(BaseModel):
 
 
 class DecisionIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     decision: Literal["APPROVE", "REJECT", "MORE_INFO"]
-    action: Literal["CLEAR", "HOLD_AND_BLOCK", "ESCALATE"] = "HOLD_AND_BLOCK"
+    action: Action | None = Field(default=None, description="APPROVE only; defaults to the route's proposed action")
     reason: str = Field(min_length=3, max_length=500)
-    actor: str = Field(default="officer.demo", max_length=60)
+    actor: str = Field(default="officer.demo", min_length=1, max_length=60, pattern=r"^[A-Za-z0-9._-]+$")
+    role: Literal["ANALYST", "COMPLIANCE_OFFICER"] = "COMPLIANCE_OFFICER"
 
 
 class CommitIn(BaseModel):
-    action: Literal["CLEAR", "HOLD_AND_BLOCK", "ESCALATE"] = "HOLD_AND_BLOCK"
+    action: Action = "HOLD_AND_BLOCK"
 
 
 class DecisionOut(BaseModel):
     approval: Approval
     resolution: Resolution | None
+    status: Literal["COMMITTED", "REJECTED", "AWAITING_INFO"]
+    override: bool
 
 
 def _summary(alert: dict, txn: dict) -> CaseSummary:
@@ -171,14 +176,32 @@ def decide_case(alert_id: str, body: DecisionIn, conn=Depends(get_conn)):
     run_result = _runs.get(alert_id)
     if run_result is None:
         raise HTTPException(409, "Run the case before deciding")
-    if run_result.decision.route == Route.AUTO_CLEAR:
+    route = run_result.decision.route
+    if route == Route.AUTO_CLEAR:
         raise HTTPException(409, "Case was auto-cleared; no human decision needed")
+    if latest_resolution(conn, alert_id) is not None:
+        raise HTTPException(409, "Case already resolved")
+    action = (body.action or proposed_action(route)) if body.decision == "APPROVE" else None
+    facts = gated_facts(conn, alert_id, settings.aed_block_threshold)
+    officer_only = route == Route.PENDING_APPROVAL or facts["high_value"] or facts["watchlist_hit"] \
+        or action == "HOLD_AND_BLOCK"
+    if officer_only and body.role != "COMPLIANCE_OFFICER":
+        raise HTTPException(403, "High-value, watchlist and blocking decisions require a compliance officer")
+    override = is_override(route, body.decision, action)
     with _db_lock:
-        approval = record_approval(conn, alert_id, body.actor, body.decision, body.reason)
+        try:
+            approval = record_approval(conn, alert_id, body.actor, body.decision, body.reason, role=body.role,
+                                       action=action, override=override)
+        except ValueError as e:
+            raise HTTPException(422, str(e))
         resolution = None
         if body.decision == "APPROVE":
-            resolution = commit_case_resolution(conn, alert_id, run_result.decision.route, body.action)
-    return DecisionOut(approval=approval, resolution=resolution)
+            try:
+                resolution = commit_case_resolution(conn, alert_id, route, action, settings.aed_block_threshold)
+            except ApprovalRequired as e:
+                raise HTTPException(403, str(e))
+    status = {"APPROVE": "COMMITTED", "REJECT": "REJECTED", "MORE_INFO": "AWAITING_INFO"}[body.decision]
+    return DecisionOut(approval=approval, resolution=resolution, status=status, override=override)
 
 
 @app.post("/cases/{alert_id}/commit", response_model=Resolution)
@@ -190,9 +213,12 @@ def commit(alert_id: str, body: CommitIn, conn=Depends(get_conn)):
         raise HTTPException(409, "Run the case before committing")
     try:
         with _db_lock:
-            return commit_case_resolution(conn, alert_id, run_result.decision.route, body.action)
+            return commit_case_resolution(conn, alert_id, run_result.decision.route, body.action,
+                                          settings.aed_block_threshold)
     except ApprovalRequired as e:
         raise HTTPException(403, str(e))
+    except AlreadyResolved as e:
+        raise HTTPException(409, str(e))
 
 
 RECORD_TABLES = {"TXN": "transactions", "CUS": "customers", "DEV": "devices", "WL": "watchlist",

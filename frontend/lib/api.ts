@@ -38,7 +38,12 @@ export const api = {
   commit: (id: string, action: Resolution["action"]) =>
     req<Resolution>(`/cases/${id}/commit`, { method: "POST", body: JSON.stringify({ action }) }),
   decide: (id: string, body: { decision: Approval["decision"]; action: Resolution["action"]; reason: string }) =>
-    req<{ approval: Approval; resolution: Resolution | null }>(`/cases/${id}/decision`, {
+    req<{
+      approval: Approval;
+      resolution: Resolution | null;
+      status: "COMMITTED" | "REJECTED" | "AWAITING_INFO";
+      override: boolean;
+    }>(`/cases/${id}/decision`, {
       method: "POST",
       body: JSON.stringify({ ...body, actor: "officer.demo" }),
     }),

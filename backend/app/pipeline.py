@@ -234,7 +234,7 @@ def run_case(conn: sqlite3.Connection, alert_id: str, guard: Guard, threshold: f
         resolution = Resolution(**dict(existing))
         gate = "ALREADY_RESOLVED"
     elif decision.route == Route.AUTO_CLEAR:
-        resolution = commit_case_resolution(conn, alert_id, Route.AUTO_CLEAR, "CLEAR")
+        resolution = commit_case_resolution(conn, alert_id, Route.AUTO_CLEAR, "CLEAR", threshold)
         gate = "AUTO_COMMITTED"
     elif decision.route == Route.PENDING_APPROVAL:
         gate = "AWAITING_APPROVAL"

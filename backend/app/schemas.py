@@ -67,12 +67,18 @@ class Velocity(BaseModel):
     new_payees_24h: int
 
 
+Action = Literal["CLEAR", "ESCALATE", "HOLD_AND_BLOCK"]
+ACTION_SEVERITY = {"CLEAR": 0, "ESCALATE": 1, "HOLD_AND_BLOCK": 2}
+
+
 class Approval(BaseModel):
     record_id: str
     alert_id: str
     actor: str
-    role: Literal["COMPLIANCE_OFFICER"]
+    role: Literal["ANALYST", "COMPLIANCE_OFFICER"]
     decision: Literal["APPROVE", "REJECT", "MORE_INFO"]
+    action: Action | None = None
+    override: bool = False
     reason: str = Field(min_length=3)
     ts: str
 
