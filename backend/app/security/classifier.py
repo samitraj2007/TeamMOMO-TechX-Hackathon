@@ -1,8 +1,9 @@
 """Layer 2: Prompt Guard 2 classifier (model name from GROQ_MODEL_GUARD), cached, fail-closed."""
 
 import re
+import time
 from datetime import datetime, timezone
-from typing import Literal, Protocol
+from typing import Callable, Literal, Protocol
 
 from pydantic import BaseModel
 
@@ -40,16 +41,50 @@ def parse_score(content: str | None) -> float:
 
 
 class GroqGuardBackend:
-    def __init__(self, settings: Settings):
+    """`min_interval_s` paces calls and `rate_limit_retries` backs off on 429; both off on the live request path
+    so a rate-limited demo fails closed fast instead of stalling."""
+
+    def __init__(self, settings: Settings, min_interval_s: float = 0.0, rate_limit_retries: int = 0,
+                 sleep: Callable[[float], None] = time.sleep):
         from openai import OpenAI
 
         self.model = settings.groq_model_guard
         self.client = OpenAI(api_key=settings.groq_api_key, base_url=settings.groq_base_url,
-                             timeout=settings.llm_timeout_s, max_retries=1)
+                             timeout=settings.llm_timeout_s, max_retries=0 if rate_limit_retries else 1)
+        self.min_interval_s = min_interval_s
+        self.rate_limit_retries = rate_limit_retries
+        self.sleep = sleep
+        self.rate_limited = 0
+        self._last_call = 0.0
+
+    def _create(self, text: str):
+        wait = self.min_interval_s - (time.monotonic() - self._last_call)
+        if wait > 0:
+            self.sleep(wait)
+        self._last_call = time.monotonic()
+        return self.client.chat.completions.create(model=self.model, messages=[{"role": "user", "content": text}])
 
     def score(self, text: str) -> float:
-        r = self.client.chat.completions.create(model=self.model, messages=[{"role": "user", "content": text}])
+        from openai import RateLimitError
+
+        for attempt in range(self.rate_limit_retries + 1):
+            try:
+                r = self._create(text)
+                break
+            except RateLimitError as e:
+                self.rate_limited += 1
+                if attempt == self.rate_limit_retries:
+                    raise
+                self.sleep(backoff_seconds(attempt, e.response.headers.get("retry-after")))
         return parse_score(r.choices[0].message.content)
+
+
+def backoff_seconds(attempt: int, retry_after: str | None, cap: float = 60.0) -> float:
+    try:
+        hinted = float(retry_after) if retry_after else 0.0
+    except ValueError:
+        hinted = 0.0
+    return min(cap, max(hinted, 2.0 * 2 ** attempt))
 
 
 class Guard:
@@ -82,6 +117,6 @@ class Guard:
                             cached=False)
 
 
-def build_guard(settings: Settings) -> Guard:
-    backend = GroqGuardBackend(settings) if settings.groq_api_key and settings.groq_model_guard else None
+def build_guard(settings: Settings, **backend_opts) -> Guard:
+    backend = GroqGuardBackend(settings, **backend_opts) if settings.groq_api_key and settings.groq_model_guard else None
     return Guard(settings, JsonCache(settings.cache_file), backend)
