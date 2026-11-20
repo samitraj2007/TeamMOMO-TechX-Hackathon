@@ -416,7 +416,6 @@ function Investigation() {
 
 function ShellDemo() {
   const { lang } = usePrefs();
-  const [rail, setRail] = useState(false);
   const [sidebar, setSidebar] = useState(true);
   const [active, setActive] = useState("queue");
   const [tabs, setTabs] = useState([
@@ -431,16 +430,21 @@ function ShellDemo() {
   const openPalette = useCallback(() => setPalette(true), []);
 
   const nav = (id: string, label: string, icon: ReactNode, meta?: ReactNode): NavItem => ({ id, label, icon, meta, onSelect: () => setActive(id) });
-  const ribbon = [
-    nav("queue", t("queue", lang), <IconQueue />), nav("transactions", t("transactions", lang), <IconTransactions />), nav("cases", t("cases", lang), <IconCases />),
-    nav("audit", t("audit", lang), <IconAudit />), nav("eval", t("eval", lang), <IconEval />), nav("ingest", t("ingest", lang), <IconIngest />),
-  ];
   const tree: NavItem[] = [
-    nav("queue", t("queue", lang), <IconQueue size={14} />, 143),
-    nav("transactions", t("transactions", lang), <IconTransactions size={14} />, int(1000)),
-    { id: "cases", label: t("cases", lang), icon: <IconCases size={14} />, children: [nav("ALT-F0001", "ALT-F0001 · held", null), nav("ALT-F0008", "ALT-F0008 · review", null)] },
-    nav("audit", t("audit", lang), <IconAudit size={14} />),
-    nav("eval", t("eval", lang), <IconEval size={14} />),
+    nav("queue", t("queue", lang), <IconQueue size={16} />, int(143)),
+    nav("transactions", t("transactions", lang), <IconTransactions size={16} />, int(1000)),
+    {
+      id: "cases",
+      label: t("cases", lang),
+      icon: <IconCases size={16} />,
+      children: [
+        { ...nav("ALT-F0001", "Falcon Ridge Trading", null, "F"), hint: "ALT-F0001", status: "red" },
+        { ...nav("ALT-F0008", "Oasis Grid Utilities", null, "G"), hint: "ALT-F0008", status: "amber" },
+      ],
+    },
+    nav("audit", t("audit", lang), <IconAudit size={16} />),
+    nav("eval", t("eval", lang), <IconEval size={16} />),
+    nav("ingest", t("ingest", lang), <IconIngest size={16} />),
   ];
   const commands: Command[] = [
     { id: "go-queue", group: "Navigate", label: "Open queue", run: () => setLast("Open queue") },
@@ -459,15 +463,12 @@ function ShellDemo() {
   };
 
   return (
-    <Section id="shell" title="App shell" note={<>Collapsible rail, animated tabs, draggable and resizable panes. Language, demo speed and live status sit in the site header. <FixtureLabel /></>}>
+    <Section id="shell" title="App shell" note={<>One collapsible sidebar with the role switch, animated case tabs, draggable and resizable panes. Language, demo speed and live status sit in the site header. <FixtureLabel /></>}>
       <div className="sheet h-[620px] overflow-hidden rounded-panel border border-hairline-strong bg-bg/80">
         <AppShell
           className="h-full"
-          ribbon={ribbon}
           tree={tree}
           activeId={active}
-          railExpanded={rail}
-          onToggleRail={() => setRail((r) => !r)}
           sidebarOpen={sidebar}
           onToggleSidebar={() => setSidebar((s) => !s)}
           onOpenPalette={openPalette}

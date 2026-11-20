@@ -13,7 +13,7 @@ export interface PaneTab {
   closable?: boolean;
 }
 
-/** Obsidian-style tab strip; the active indicator slides between tabs and closed tabs collapse away. */
+/** Open cases as pills; the white active pill slides between them and closed tabs collapse away. */
 export function PaneTabs({
   tabs,
   activeId,
@@ -27,7 +27,7 @@ export function PaneTabs({
 }) {
   const uid = useId();
   return (
-    <div role="tablist" aria-label="Open panes" className="flex h-10 shrink-0 items-end gap-1 overflow-x-auto px-1">
+    <div role="tablist" aria-label="Open panes" className="mb-2 flex h-10 shrink-0 items-center gap-1 overflow-x-auto">
       <AnimatePresence initial={false}>
         {tabs.map((t) => {
           const active = t.id === activeId;
@@ -35,24 +35,27 @@ export function PaneTabs({
             <motion.div
               key={t.id}
               layout
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, width: 0, transition: { duration: 0.14 } }}
               transition={SPRING.ui}
-              className={cx("group relative flex h-8 min-w-0 max-w-56 items-center rounded-t-control", active ? "text-text" : "text-muted hover:text-text")}
+              className={cx("group relative flex h-8 min-w-0 max-w-56 shrink-0 items-center rounded-full", active ? "text-text" : "text-muted hover:text-text")}
             >
               {active && (
-                <motion.span layoutId={`tab-${uid}`} transition={SPRING.ui} aria-hidden
-                  className="absolute inset-0 rounded-t-panel border border-b-0 border-hairline-strong bg-raised shadow-sheen">
-                  <span className="absolute inset-x-3 top-0 h-px bg-brass" />
-                </motion.span>
+                <motion.span
+                  layoutId={`tab-${uid}`}
+                  transition={SPRING.ui}
+                  aria-hidden
+                  className="absolute inset-0 rounded-full bg-surface shadow-[0_1px_2px_rgb(16_17_18/0.07),0_0_0_0.5px_rgb(16_17_18/0.07)]"
+                />
               )}
+              {!active && <span aria-hidden className="absolute inset-0 rounded-full transition-colors duration-150 group-hover:bg-hairline/50" />}
               <button
                 type="button"
                 role="tab"
                 aria-selected={active}
                 onClick={() => onSelect(t.id)}
-                className={cx("press relative h-full min-w-0 truncate rounded-t-control ps-3 pe-1 text-sm", t.mono && "num", !t.closable && "pe-3")}
+                className={cx("press relative h-full min-w-0 truncate rounded-full ps-3.5 pe-1 text-xs", t.mono && "num", !t.closable && "pe-3.5")}
               >
                 {t.label}
               </button>
@@ -61,9 +64,9 @@ export function PaneTabs({
                   type="button"
                   aria-label={`Close ${t.label}`}
                   onClick={() => onClose(t.id)}
-                  className="press relative me-1.5 inline-flex h-5 w-5 items-center justify-center rounded-xs text-muted opacity-60 hover:bg-overlay hover:text-text group-hover:opacity-100"
+                  className="press relative me-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-muted opacity-60 hover:bg-hairline hover:text-text group-hover:opacity-100 focus-visible:opacity-100"
                 >
-                  <IconClose size={12} />
+                  <IconClose size={11} />
                 </button>
               )}
             </motion.div>

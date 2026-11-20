@@ -29,9 +29,9 @@ export function EvalView() {
   const card = evalQuery.data;
 
   return (
-    <div className="flex flex-col gap-4 p-5">
+    <div className="route-in flex flex-col gap-5 px-2 pb-8 pt-1">
       <div className="flex flex-col gap-1">
-        <h1 className="text-base font-medium text-text">Eval</h1>
+        <h1 className="text-[30px] font-semibold leading-9 tracking-[-0.03em] text-text">Eval</h1>
         <p className="max-w-xl text-sm text-muted">
           Counts come from GET /eval. A case with no stored route is unscored, and unscored cases are not counted as passes. Case responses still withhold the ground-truth labels.
         </p>
@@ -45,7 +45,7 @@ export function EvalView() {
         />
       )}
       {card && (
-        <div className="flex max-w-xl flex-col gap-4">
+        <div className="flex max-w-2xl flex-col gap-5 rounded-sheet border border-hairline bg-surface p-5 shadow-card">
           <PropertiesTable rows={[
             { key: "Cases scored", ...n(card.cases_scored) },
             { key: "Cases unscored", ...n(card.cases_unscored) },
@@ -55,7 +55,7 @@ export function EvalView() {
             { key: "Human review", ...n(card.human_review) },
           ]} />
           <div className="flex flex-col gap-2">
-            <h2 className="text-sm text-text">Injection cases by layer</h2>
+            <h2 className="text-sm font-semibold text-text">Injection cases by layer</h2>
             <PropertiesTable rows={[
               { key: "Caught by regex", ...n(card.injection_caught_by_regex) },
               { key: "Flagged by classifier", ...n(card.injection_flagged_by_classifier) },

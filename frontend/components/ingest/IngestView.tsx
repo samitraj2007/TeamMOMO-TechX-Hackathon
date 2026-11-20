@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Button, Callout, Field, Input, Select, TextArea } from "@/components/primitives";
 import { ApiError, errorMessage } from "@/lib/api";
+import { useHydrated } from "@/lib/hydrated";
 import { useHealth, useIngest } from "@/lib/queries";
 import type { IngestIn } from "@/lib/types";
 
@@ -58,7 +59,8 @@ export function IngestView() {
   const [payeeAccount, setPayeeAccount] = useState("");
   const [payeeKnown, setPayeeKnown] = useState(true);
   const [memo, setMemo] = useState("");
-  const mode = health.data?.demo_mode;
+  // The header polls health too, so it can be cached before hydration; see useHydrated.
+  const mode = useHydrated() ? health.data?.demo_mode : undefined;
   const fieldError = validationErrors(ingest.error);
   const unmatched = ingest.isError && Object.keys(fieldError).length === 0;
 
@@ -80,9 +82,9 @@ export function IngestView() {
   }
 
   return (
-    <div className="flex flex-col gap-4 p-5">
+    <div className="route-in flex flex-col gap-5 px-2 pb-8 pt-1">
       <div className="flex flex-col gap-1">
-        <h1 className="text-base font-medium text-text">Test your own case</h1>
+        <h1 className="text-[30px] font-semibold leading-9 tracking-[-0.03em] text-text">Test your own case</h1>
         <p className="max-w-xl text-sm text-muted">
           Provider mode{" "}
           <span className="num text-text">{mode ?? (health.isError ? "unavailable" : "…")}</span>
@@ -94,7 +96,7 @@ export function IngestView() {
           New cases need live mode; quarantine and the gate still run.
         </Callout>
       )}
-      <form onSubmit={submit} className="grid max-w-xl grid-cols-1 gap-3 sm:grid-cols-2">
+      <form onSubmit={submit} className="grid max-w-3xl grid-cols-1 gap-x-4 gap-y-4 rounded-sheet border border-hairline bg-surface p-6 shadow-card sm:grid-cols-2">
         <Field label="Customer" htmlFor="customer_id" error={fieldError.customer_id} hint="CUS- and 4 to 6 digits">
           <Input id="customer_id" mono required value={customerId} onChange={(e) => setCustomerId(e.target.value)} autoComplete="off" aria-invalid={!!fieldError.customer_id} />
         </Field>
@@ -124,7 +126,7 @@ export function IngestView() {
           <Input id="payee_account" mono maxLength={34} value={payeeAccount} onChange={(e) => setPayeeAccount(e.target.value)} aria-invalid={!!fieldError.payee_account} />
         </Field>
         <label className="flex items-center gap-2 text-sm text-text sm:col-span-2">
-          <input type="checkbox" checked={payeeKnown} onChange={(e) => setPayeeKnown(e.target.checked)} />
+          <input type="checkbox" className="h-4 w-4 rounded-xs accent-sage" checked={payeeKnown} onChange={(e) => setPayeeKnown(e.target.checked)} />
           Payee already known
         </label>
         <Field
@@ -143,7 +145,7 @@ export function IngestView() {
             </Button>
           ))}
         </div>
-        <div className="sm:col-span-2">
+        <div className="border-t border-hairline pt-4 sm:col-span-2">
           <Button type="submit" variant="solid" disabled={ingest.isPending}>
             {ingest.isPending ? "Running…" : "Run this case"}
           </Button>

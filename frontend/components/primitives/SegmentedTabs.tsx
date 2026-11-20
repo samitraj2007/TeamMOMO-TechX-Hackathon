@@ -51,7 +51,7 @@ export function SegmentedTabs<T extends string>({
   return (
     <div role="tablist" aria-label={label} onKeyDown={onKey}
       className={cx(
-        underline ? "flex gap-5 border-b border-hairline" : "inline-flex gap-0.5 rounded-control border border-hairline bg-bg/70 p-0.5",
+        underline ? "flex gap-6 border-b border-hairline" : "inline-flex gap-0.5 rounded-full bg-hairline/60 p-[3px]",
         className,
       )}>
       {options.map((o, i) => {
@@ -70,7 +70,7 @@ export function SegmentedTabs<T extends string>({
             onClick={() => onChange(o.value)}
             className={cx(
               "relative inline-flex items-center gap-1.5",
-              underline ? "-mb-px h-9 px-0.5 text-sm font-medium" : cx("press rounded-xs", size === "sm" ? "h-6 px-2 text-xs" : "h-7 px-3 text-sm"),
+              underline ? "-mb-px h-10 px-0.5 text-sm font-medium transition-colors duration-150" : cx("press rounded-full font-medium", size === "sm" ? "h-6 px-2.5 text-xs" : "h-7 px-3.5 text-sm"),
               active ? "text-text" : "text-muted hover:text-text",
               "disabled:cursor-not-allowed disabled:opacity-40",
             )}
@@ -81,8 +81,8 @@ export function SegmentedTabs<T extends string>({
                 transition={SPRING.ui}
                 aria-hidden
                 className={underline
-                  ? "absolute inset-x-0 bottom-0 h-0.5 bg-sage"
-                  : "absolute inset-0 -z-0 rounded-xs border border-hairline-strong bg-raised shadow-sheen"}
+                  ? "absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-sage"
+                  : "absolute inset-0 -z-0 rounded-full bg-surface shadow-[0_1px_2px_rgb(16_17_18/0.08),0_0_0_0.5px_rgb(16_17_18/0.06)]"}
               />
             )}
             <span className="relative">{o.label}</span>

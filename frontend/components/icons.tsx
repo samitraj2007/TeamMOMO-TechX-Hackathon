@@ -10,9 +10,9 @@ function Icon({ size = 16, children, ...rest }: IconProps & { children: React.Re
       viewBox="0 0 16 16"
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.25}
-      strokeLinecap="square"
-      strokeLinejoin="miter"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
       aria-hidden="true"
       focusable="false"
       {...rest}

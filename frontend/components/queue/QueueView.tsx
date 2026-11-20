@@ -4,11 +4,12 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import {
-  Button, CountUp, DataTable, EmptyState, ErrorState, Input, LoadingState, RouteTag, SegmentedTabs, Select, Tag, Tile,
+  Button, CountUp, DataTable, EmptyState, ErrorState, Input, LoadingState, PageHeader, RouteTag, SegmentedTabs, Select, Tile,
   type Column,
 } from "@/components/primitives";
 import { api } from "@/lib/api";
 import { money } from "@/lib/format";
+import { useHydrated } from "@/lib/hydrated";
 import { ROUTE_TONE } from "@/lib/labels";
 import { keys, useCases } from "@/lib/queries";
 import type { CaseSummary, Route } from "@/lib/types";
@@ -34,7 +35,10 @@ export function QueueView() {
   const [progress, setProgress] = useState<RunProgress | null>(null);
   const lock = useRef(false);
 
-  const rows = useMemo(() => cases.data ?? [], [cases.data]);
+  // Render the list only after hydration; see useHydrated.
+  const hydrated = useHydrated();
+  const list = hydrated ? cases.data : undefined;
+  const rows = useMemo(() => list ?? [], [list]);
   const rules = useMemo(() => [...new Set(rows.map((r) => r.rule_id))].sort(), [rows]);
   const counts = {
     total: rows.length,
@@ -83,25 +87,26 @@ export function QueueView() {
   }
 
   const columns: Column<CaseSummary>[] = [
-    { key: "tag", header: "Tag", width: "52px", render: (r) => r.demo_tag ? <Tag tone="amber">{r.demo_tag}</Tag> : <span className="text-muted">—</span> },
+    { key: "tag", header: "Tag", width: "52px", render: (r) => r.demo_tag ? <span className="num inline-flex h-5 w-5 items-center justify-center rounded-full bg-hairline text-[10px] font-semibold text-text">{r.demo_tag}</span> : <span className="text-muted">—</span> },
     { key: "id", header: "Alert", width: "120px", mono: true, render: (r) => r.alert_id },
     { key: "title", header: "Title", width: "minmax(160px, 1.4fr)", render: (r) => <span className="truncate">{r.title}</span> },
     { key: "payee", header: "Payee", width: "minmax(120px, 1fr)", render: (r) => <span className="truncate text-muted">{r.payee_name ?? "—"}</span> },
     { key: "amount", header: "Amount", width: "130px", align: "end", mono: true, render: (r) => money(r.amount, r.currency) },
-    { key: "rule", header: "Rule", width: "72px", mono: true, render: (r) => r.rule_id },
+    { key: "rule", header: "Rule", width: "96px", mono: true, render: (r) => <span className="truncate" title={r.rule_id}>{r.rule_id}</span> },
     { key: "route", header: "Route", width: "150px", render: (r) => <RouteTag route={r.last_route} /> },
   ];
 
   return (
-    <div className="flex flex-col gap-5 p-5">
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <Tile label="Alerts" value={<CountUp value={counts.total} />} foot={`${counts.clear} auto-cleared`} />
-        <Tile label="Not run" tone="muted" value={<CountUp value={counts.unrun} />} foot="Route appears after a run" />
-        <Tile label="Needs review" tone="amber" value={<CountUp value={counts.review} />} />
-        <Tile label="Pending approval" tone="red" value={<CountUp value={counts.approval} />} foot="Officer gate" />
+    <div className="route-in flex flex-col gap-5 px-2 pb-8 pt-1">
+      <PageHeader title="Queue" description="Flagged payments in the demo set. Code assigns each route when a case runs; select a lane to filter." />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Tile label="Alerts" tone="neutral" value={<CountUp value={counts.total} />} foot={`${counts.clear} auto-cleared`} onSelect={() => setLane("all")} active={lane === "all"} />
+        <Tile label="Not run" tone="muted" value={<CountUp value={counts.unrun} />} foot="Route appears after a run" onSelect={() => setLane("unrun")} active={lane === "unrun"} />
+        <Tile label="Needs review" tone="amber" value={<CountUp value={counts.review} />} foot="Analyst review" onSelect={() => setLane("NEEDS_REVIEW")} active={lane === "NEEDS_REVIEW"} />
+        <Tile label="Pending approval" tone="red" value={<CountUp value={counts.approval} />} foot="Officer gate" onSelect={() => setLane("PENDING_APPROVAL")} active={lane === "PENDING_APPROVAL"} />
       </div>
 
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <SegmentedTabs
           label="Lane"
           size="sm"
@@ -132,7 +137,7 @@ export function QueueView() {
           ]}
         />
         <Input aria-label="Search the queue" placeholder="Search alert, title, payee" value={q} onChange={(e) => setQ(e.target.value)} className="w-64" />
-        <Button variant="accent" onClick={() => void runQueue()} disabled={running || filtered.length === 0}>
+        <Button variant="solid" className="ms-auto" onClick={() => void runQueue()} disabled={running || filtered.length === 0}>
           {running ? `Running ${progress.current}` : "Run queue"}
         </Button>
       </div>
@@ -149,19 +154,19 @@ export function QueueView() {
             </span>
             <span className="num">{Math.round((progress.done / Math.max(1, progress.total)) * 100)}%</span>
           </div>
-          <div className="h-1 overflow-hidden rounded-control bg-raised" role="progressbar" aria-valuemin={0} aria-valuemax={progress.total} aria-valuenow={progress.done}>
-            <div className="h-full bg-brass" style={{ width: `${(progress.done / Math.max(1, progress.total)) * 100}%` }} />
+          <div className="h-1.5 overflow-hidden rounded-full bg-hairline" role="progressbar" aria-valuemin={0} aria-valuemax={progress.total} aria-valuenow={progress.done}>
+            <div className="h-full rounded-full bg-sage transition-[width] duration-300 ease-out" style={{ width: `${(progress.done / Math.max(1, progress.total)) * 100}%` }} />
           </div>
           {progress.error ? <ErrorState error={progress.error} /> : null}
         </div>
       )}
 
-      {cases.isLoading && <LoadingState label="Loading the queue" />}
+      {(!hydrated || cases.isLoading) && <LoadingState label="Loading the queue" />}
       {cases.isError && <ErrorState error={cases.error} onRetry={() => void cases.refetch()} />}
-      {cases.data && cases.data.length === 0 && (
+      {list && list.length === 0 && (
         <EmptyState title="No alerts in the demo queue" body="The demo set is empty. A reset would rebuild it; this screen will not invent rows." />
       )}
-      {cases.data && cases.data.length > 0 && (
+      {list && list.length > 0 && (
         <DataTable
           label="Alert queue"
           rows={filtered}

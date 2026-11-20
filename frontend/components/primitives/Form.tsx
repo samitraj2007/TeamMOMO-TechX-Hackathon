@@ -2,8 +2,9 @@ import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTML
 import { cx } from "@/lib/cx";
 
 const CONTROL =
-  "w-full rounded-control border border-hairline-strong bg-bg/80 px-2.5 text-sm text-text placeholder:text-muted shadow-sheen " +
-  "outline-none transition-colors duration-[120ms] hover:border-muted/60 focus:border-sage focus:bg-bg disabled:opacity-40 " +
+  "rounded-control border border-hairline-strong bg-surface px-3 text-sm text-text placeholder:text-muted shadow-sheen " +
+  "outline-none transition-[border-color,box-shadow,background-color] duration-150 hover:border-muted/50 " +
+  "focus:border-sage focus:shadow-[0_0_0_3px_rgb(47_93_78/0.14)] disabled:opacity-40 " +
   "aria-[invalid=true]:border-red";
 
 export function Field({
@@ -22,8 +23,8 @@ export function Field({
   className?: string;
 }) {
   return (
-    <div className={cx("flex flex-col gap-1", className)}>
-      <label htmlFor={htmlFor} className="text-2xs font-medium uppercase tracking-[0.08em] text-muted">
+    <div className={cx("flex flex-col gap-1.5", className)}>
+      <label htmlFor={htmlFor} className="text-xs font-medium text-muted">
         {label}
       </label>
       {children}
@@ -36,18 +37,21 @@ export function Field({
   );
 }
 
+/** Controls fill their container unless the caller sets a width (a later w-full would otherwise win in the cascade). */
+const fill = (className?: string) => (className && /(^|\s)([a-z0-9-]+:)*(w-|flex-1)/.test(className) ? null : "w-full");
+
 export function Input({ className, mono, ...rest }: InputHTMLAttributes<HTMLInputElement> & { mono?: boolean }) {
-  return <input className={cx(CONTROL, "h-9", mono && "num", className)} {...rest} />;
+  return <input className={cx(CONTROL, fill(className), "h-9", mono && "num", className)} {...rest} />;
 }
 
 export function Select({ className, children, ...rest }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
-    <select className={cx(CONTROL, "h-9 pe-6", className)} {...rest}>
+    <select className={cx(CONTROL, fill(className), "h-9 pe-6", className)} {...rest}>
       {children}
     </select>
   );
 }
 
 export function TextArea({ className, ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea className={cx(CONTROL, "min-h-20 py-1.5 leading-5", className)} dir="auto" {...rest} />;
+  return <textarea className={cx(CONTROL, fill(className), "min-h-20 py-1.5 leading-5", className)} dir="auto" {...rest} />;
 }

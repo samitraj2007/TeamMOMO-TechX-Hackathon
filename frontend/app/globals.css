@@ -1,55 +1,60 @@
 @import "tailwindcss";
 
-/* Spine & Key: warm paper, ink text, one teal accent taken from the mascot's shield.
-   `sage` and `brass` keep their names (used across components) but now carry teal and amber.
+/* MOMO: neutral foundations, one desaturated forest accent, rounded surfaces with two elevations.
+   Token names `sage` and `brass` are kept (used across components): sage carries forest, brass carries amber.
+   The graphite palette (.palette-charcoal) is the landing; the dark key (.surface-key) holds human approval.
    Keep in sync with lib/tokens.ts. */
 @theme {
-  --color-bg: #f4f3ef;
+  --color-bg: #f3f3f1;
   --color-surface: #ffffff;
-  --color-raised: #f8f7f4;
+  --color-raised: #f7f7f5;
   --color-overlay: #ffffff;
-  --color-hairline: #e3e1da;
-  --color-hairline-strong: #cfccc3;
-  --color-text: #151514;
-  --color-muted: #5e5b54;
-  --color-sage: #1f5f5c;
-  --color-amber: #8a5a12;
-  --color-brass: #8a5a12;
-  --color-red: #b5463a;
-  --color-red-text: #a3352b;
-  --color-model: #4a5b6e;
+  --color-hairline: #e5e5e1;
+  --color-hairline-strong: #d3d3ce;
+  --color-text: #17181a;
+  --color-muted: #66676b;
+  --color-sage: #2f5d4e;
+  --color-amber: #9a6a1f;
+  --color-brass: #9a6a1f;
+  --color-red: #b0473b;
+  --color-red-text: #a33a2f;
+  --color-model: #56657a;
   --color-human: #7a5a1e;
-  --color-teal: #1f5f5c;
+  --color-teal: #2f5d4e;
 
-  /* Phase-0 aliases, kept so older class names follow the paper palette. */
-  --color-ink: #151514;
+  /* Older class names follow the same palette. */
+  --color-ink: #17181a;
   --color-panel: #ffffff;
-  --color-panel-2: #f8f7f4;
-  --color-line: #e3e1da;
-  --color-fg: #151514;
-  --color-faint: #5e5b54;
-  --color-clear: #1f5f5c;
-  --color-review: #8a5a12;
-  --color-approve: #b5463a;
-  --color-llm: #4a5b6e;
+  --color-panel-2: #f7f7f5;
+  --color-line: #e5e5e1;
+  --color-fg: #17181a;
+  --color-faint: #66676b;
+  --color-clear: #2f5d4e;
+  --color-review: #9a6a1f;
+  --color-approve: #b0473b;
+  --color-llm: #56657a;
 
-  --radius-xs: 2px;
-  --radius-sm: 3px;
-  --radius-md: 3px;
-  --radius-lg: 8px;
-  --radius-xl: 8px;
-  --radius-2xl: 8px;
-  --radius-3xl: 8px;
-  --radius-4xl: 8px;
-  --radius-control: 4px;
-  --radius-panel: 8px;
-  --radius-search: 12px;
+  /* Radius by hierarchy: controls 8, cards 12, large sheets 16, chips full. */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-3xl: 24px;
+  --radius-4xl: 28px;
+  --radius-control: 8px;
+  --radius-panel: 12px;
+  --radius-sheet: 16px;
+  --radius-search: 10px;
 
+  /* Two elevations: card (resting) and pop (floating). `sheen` is the faint control lift. */
   --shadow-*: initial;
-  --shadow-sheen: inset 0 1px 0 0 rgb(255 255 255 / 0.9);
-  --shadow-sheen-strong: inset 0 1px 0 0 rgb(255 255 255 / 1);
-  /* The only drop shadow in the system, reserved for the black key. */
-  --shadow-key: 0 18px 40px -18px rgb(0 0 0 / 0.45);
+  --shadow-sheen: 0 1px 1px 0 rgb(16 17 18 / 0.035);
+  --shadow-sheen-strong: 0 1px 2px 0 rgb(16 17 18 / 0.06);
+  --shadow-card: 0 1px 2px 0 rgb(16 17 18 / 0.04), 0 2px 8px -4px rgb(16 17 18 / 0.06);
+  --shadow-pop: 0 18px 48px -16px rgb(16 17 18 / 0.28), 0 2px 8px -2px rgb(16 17 18 / 0.08);
+  --shadow-key: 0 24px 48px -24px rgb(0 0 0 / 0.5), 0 2px 6px 0 rgb(0 0 0 / 0.12);
   --inset-shadow-*: initial;
   --drop-shadow-*: initial;
 
@@ -61,12 +66,14 @@
   --text-sm--line-height: 20px;
   --text-base: 14px;
   --text-base--line-height: 20px;
-  --text-md: 16px;
+  --text-md: 15px;
   --text-md--line-height: 24px;
-  --text-lg: 20px;
-  --text-lg--line-height: 28px;
-  --text-xl: 28px;
-  --text-xl--line-height: 36px;
+  --text-lg: 17px;
+  --text-lg--line-height: 24px;
+  --text-xl: 22px;
+  --text-xl--line-height: 28px;
+  --text-2xl: 28px;
+  --text-2xl--line-height: 34px;
   --text-display: 64px;
   --text-display--line-height: 68px;
   --text-display--letter-spacing: -0.045em;
@@ -79,10 +86,6 @@
   --font-sans: var(--font-geist), var(--font-plex-arabic), system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, "Cascadia Mono", Consolas, monospace;
   --font-arabic: var(--font-plex-arabic), var(--font-geist), system-ui, sans-serif;
-}
-
-.font-mephisto {
-  font-family: var(--font-mephisto), var(--font-geist), serif;
 }
 
 html {
@@ -99,39 +102,21 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* App background: slow grain drift and a faint contour. Reduced motion freezes it. */
+/* App canvas: plain neutral. No drift, no texture. */
 .app-backdrop {
   background-color: var(--color-bg);
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.11 0 0 0 0 0.13 0 0 0 0 0.11 0 0 0 0.045 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E"),
-    radial-gradient(1000px 560px at 0% -10%, rgb(21 21 20 / 0.04), transparent 62%),
-    radial-gradient(720px 420px at 100% 0%, rgb(31 95 92 / 0.05), transparent 58%);
-  background-attachment: fixed;
-  animation: backdrop-drift 48s linear infinite;
 }
 
-@keyframes backdrop-drift {
-  from { background-position: 0 0, 0 0, 0 0; }
-  to { background-position: 180px 90px, 0 0, 0 0; }
-}
-
-/* A sheet: white top-edge highlight, no drop shadow. */
+/* A resting card surface: the component sets the hairline; this adds the soft card elevation. */
 .sheet {
-  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.72), transparent 42%);
-  box-shadow: var(--shadow-sheen);
+  box-shadow: var(--shadow-card);
 }
 
-/* Soft blurred glow placed behind an active element (see components/primitives/Surface.tsx). */
-.glow-brass {
-  background: radial-gradient(closest-side, rgb(207 166 90 / 0.22), transparent);
-  filter: blur(14px);
-}
-.glow-sage {
-  background: radial-gradient(closest-side, rgb(127 168 142 / 0.22), transparent);
-  filter: blur(14px);
-}
+/* Soft glow behind the mascot in empty states (Mascot.tsx). Neutral, very low strength. */
+.glow-brass,
+.glow-sage,
 .glow-red {
-  background: radial-gradient(closest-side, rgb(181 82 74 / 0.26), transparent);
+  background: radial-gradient(closest-side, rgb(47 93 78 / 0.1), transparent);
   filter: blur(14px);
 }
 
@@ -149,27 +134,28 @@ body {
   line-height: 1.7;
 }
 
-/* Teal focus ring on paper; cream inside the black key (see .surface-key). */
+/* Forest focus ring on light; light ring on graphite and on the key. The outline follows each element's radius. */
 :focus-visible {
   outline: 2px solid var(--color-sage);
   outline-offset: 2px;
-  border-radius: 3px;
 }
 
 /* Press feedback on every control. */
 .press {
   transition:
     transform 120ms var(--ease-out),
-    background-color 120ms var(--ease-out),
-    border-color 120ms var(--ease-out),
-    color 120ms var(--ease-out);
+    background-color 150ms var(--ease-out),
+    border-color 150ms var(--ease-out),
+    box-shadow 150ms var(--ease-out),
+    color 150ms var(--ease-out),
+    opacity 150ms var(--ease-out);
 }
 .press:active:not(:disabled) {
   transform: scale(0.97);
 }
 
 ::selection {
-  background: rgb(31 95 92 / 0.2);
+  background: rgb(47 93 78 / 0.18);
   color: var(--color-text);
 }
 
@@ -178,13 +164,15 @@ body {
   scrollbar-color: var(--color-hairline-strong) transparent;
 }
 
-/* Diagonal hatch for neutralised text and blocked states (a texture, not decoration). */
-.hatch {
-  background-image: repeating-linear-gradient(135deg, rgb(181 82 74 / 0.22) 0 1px, transparent 1px 6px);
+/* Long tokens (hashes, ids) wrap inside their column instead of running under the next one. */
+.wrap-anywhere {
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 
-.hatch-muted {
-  background-image: repeating-linear-gradient(135deg, rgb(151 164 150 / 0.12) 0 1px, transparent 1px 6px);
+/* Diagonal hatch for neutralised text and blocked states (a texture that carries meaning). */
+.hatch {
+  background-image: repeating-linear-gradient(135deg, rgb(176 71 59 / 0.2) 0 1px, transparent 1px 6px);
 }
 
 /* Range input over a custom track (airlock scrubber): only the thumb is drawn. */
@@ -203,147 +191,108 @@ body {
 }
 .airlock-scrub::-webkit-slider-thumb {
   appearance: none;
-  width: 10px;
-  height: 16px;
-  border: 1px solid var(--color-brass);
-  border-radius: 2px;
-  background: var(--color-bg);
+  width: 14px;
+  height: 14px;
+  margin-top: 1px;
+  border: 2px solid var(--color-sage);
+  border-radius: 999px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sheen-strong);
   transition: transform 120ms var(--ease-out);
 }
 .airlock-scrub:active::-webkit-slider-thumb {
   transform: scale(1.15);
 }
 .airlock-scrub::-moz-range-thumb {
-  width: 10px;
-  height: 16px;
-  border: 1px solid var(--color-brass);
-  border-radius: 2px;
-  background: var(--color-bg);
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-sage);
+  border-radius: 999px;
+  background: var(--color-surface);
 }
 
-/* Phase-0 case screen helpers, removed in step 3. */
-@keyframes momo-in {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-.reveal {
-  animation: momo-in 180ms var(--ease-out) both;
-}
-
-.hostile-span {
-  background: rgb(156 59 52 / 0.12);
-  box-shadow: inset 0 -1px 0 var(--color-red);
-  color: var(--color-red-text);
-}
-
-/* Charcoal palette for the landing hero and header.
-   The app below them keeps the paper tokens above.
-   To switch the whole app later, move this custom-property block onto `html`. */
+/* Graphite palette for the landing and its header. */
 .palette-charcoal {
-  --color-bg: #0e0e0d;
-  --color-surface: #151514;
-  --color-raised: #1c1c1a;
-  --color-overlay: #151514;
-  --color-hairline: #2a2a27;
-  --color-hairline-strong: #3a3a36;
-  --color-text: #ece8df;
-  --color-muted: #8c8a82;
-  --color-brass: #b8975a;
-  /* Shield teal, lifted for dark ground (~7.8:1 on bg). */
-  --color-sage: #6fb3b0;
-  --color-teal: #6fb3b0;
-  --color-ink: #ece8df;
-  --color-fg: #ece8df;
-  --color-faint: #8c8a82;
-  --momo-cap: clamp(9.5rem, 0.5rem + 11.25vw, 14rem);
+  --color-bg: #111213;
+  --color-surface: #18191b;
+  --color-raised: #202124;
+  --color-overlay: #18191b;
+  --color-hairline: #2a2b2e;
+  --color-hairline-strong: #3a3b3f;
+  --color-text: #edece8;
+  --color-muted: #9a9a96;
+  --color-brass: #d9b36e;
+  --color-sage: #8fb5a3;
+  --color-teal: #8fb5a3;
+  --color-ink: #edece8;
+  --color-fg: #edece8;
+  --color-faint: #9a9a96;
+  --shadow-sheen: 0 1px 0 0 rgb(255 255 255 / 0.04) inset;
+  --shadow-card: none;
   color-scheme: dark;
 }
 
 .palette-charcoal :focus-visible {
-  outline-color: var(--color-brass);
+  outline-color: #edece8;
 }
 
-.charcoal-field {
-  background-color: var(--color-bg);
-  background-image:
-    radial-gradient(120% 90% at 50% 40%, transparent 42%, rgb(0 0 0 / 0.55) 100%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.93 0 0 0 0 0.91 0 0 0 0 0.87 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: auto, 140px 140px;
+/* Hero atmosphere: one soft overhead light, and a perforated dot field that clears toward the centre. */
+.hero-light {
+  background: radial-gradient(60% 55% at 50% 0%, rgb(237 236 232 / 0.085), transparent 70%);
 }
 
-.charcoal-contours {
-  background-image: url("/brand/contours.svg");
-  background-size: cover;
-  background-position: center;
-  mask-image: radial-gradient(closest-side at 50% 42%, transparent 18%, rgb(0 0 0 / 0.35) 46%, #000 78%);
-  opacity: 0.55;
+.hero-perf {
+  background-image: radial-gradient(circle at center, rgb(237 236 232 / 0.1) 0.9px, transparent 1.6px);
+  background-size: 13px 13px;
+  mask-image: radial-gradient(75% 70% at 50% 46%, transparent 40%, rgb(0 0 0 / 0.55) 74%, #000 100%);
 }
 
-.hero-press {
-  transition: transform 120ms var(--ease-out);
-}
-
-.palette-charcoal .hero-press:active:not(:disabled) {
-  transform: scale(0.98);
-}
-
-/* The black key: the ink surface that holds human approval and filing controls.
+/* The dark key: the surface that holds human approval and filing controls.
    It re-points the colour tokens, so primitives inside (fields, buttons, refusals) restyle themselves.
    It is a presentation of controls; the backend enforces the gate. */
 .surface-key {
-  --color-bg: #1d1c1a;
-  --color-surface: #131312;
-  --color-raised: #24231f;
-  --color-overlay: #1d1c1a;
-  --color-hairline: #302e2a;
-  --color-hairline-strong: #4a4740;
-  --color-text: #eeeae2;
-  --color-muted: #aaa69c;
-  --color-sage: #7cc0bc;
-  --color-amber: #e3b866;
-  --color-brass: #e3b866;
-  --color-red: #d36a5f;
-  --color-red-text: #f29a90;
-  --color-model: #a4b7cb;
+  --color-bg: #1e1f21;
+  --color-surface: #161719;
+  --color-raised: #26272a;
+  --color-overlay: #1e1f21;
+  --color-hairline: #2e2f33;
+  --color-hairline-strong: #46474c;
+  --color-text: #edece8;
+  --color-muted: #a6a6a2;
+  --color-sage: #9cc2b0;
+  --color-amber: #e2b86a;
+  --color-brass: #e2b86a;
+  --color-red: #d6705f;
+  --color-red-text: #f1a096;
+  --color-model: #a9b8c9;
   --color-human: #d9bc80;
-  --shadow-sheen: inset 0 1px 0 0 rgb(255 255 255 / 0.06);
+  --shadow-sheen: 0 1px 0 0 rgb(255 255 255 / 0.04) inset;
+  --shadow-card: none;
   color-scheme: dark;
   background-color: var(--color-surface);
   color: var(--color-text);
   box-shadow: var(--shadow-key);
 }
 
-/* The paper sheet highlight is a white fade; on the key it would wash out headers. */
-.surface-key .sheet {
-  background-image: none;
-}
-
-/* Disabled controls on the key stay legible (40% on near-black falls to ~2.3:1; 60% keeps ~3.7:1). */
+/* Disabled controls on the key stay legible (60% keeps ~3.7:1 on near-black). */
 .surface-key button:disabled {
   opacity: 0.6;
 }
 
 .surface-key :focus-visible {
-  outline-color: #eeeae2;
+  outline-color: #edece8;
 }
 
 .surface-key ::selection {
-  background: rgb(238 234 226 / 0.25);
+  background: rgb(237 236 232 / 0.25);
 }
 
-/* Landing entrance: CSS, so content is visible even when scripts do not run.
+/* Entrance for content that must stay visible without scripts.
    Reduced motion collapses it to the final state via the rule below. */
 @keyframes momo-rise {
   from {
     opacity: 0;
-    transform: translate3d(0, 18px, 0);
+    transform: translate3d(0, 16px, 0);
   }
   to {
     opacity: 1;
@@ -356,11 +305,87 @@ body {
   animation-delay: var(--rise-delay, 0ms);
 }
 
+/* Landing hero entrance. Delays come from --rise-delay; the reduced-motion block below collapses all of it. */
+@keyframes momo-glow {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.hero-glow {
+  animation: momo-glow 1400ms ease-out both;
+}
+
+@keyframes momo-mascot {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 28px, 0) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.hero-mascot {
+  animation: momo-mascot 1100ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
+}
+
+/* Each letter slides up out of its own mask. */
+@keyframes momo-letter {
+  from {
+    transform: translate3d(0, 105%, 0);
+  }
+  to {
+    transform: none;
+  }
+}
+
+.hero-letter {
+  animation: momo-letter 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--rise-delay, 0ms);
+}
+
+/* Scroll cue: a short segment travels down a hairline, then pauses. */
+@keyframes momo-cue {
+  0% {
+    transform: translate3d(0, -100%, 0);
+  }
+  55%,
+  100% {
+    transform: translate3d(0, 320%, 0);
+  }
+}
+
+.hero-cue {
+  animation: momo-cue 2400ms cubic-bezier(0.65, 0, 0.35, 1) 1800ms infinite;
+}
+
+/* Workspace content settles in on route change. */
+@keyframes momo-fade {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 4px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.route-in {
+  animation: momo-fade 220ms var(--ease-out) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;

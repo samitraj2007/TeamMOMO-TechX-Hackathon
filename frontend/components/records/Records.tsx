@@ -161,7 +161,7 @@ function RecordDrawer({ id, source, onClose }: { id: string | null; source: Reco
             </Callout>
           )}
           <section className="flex flex-col gap-2">
-            <h3 className="text-2xs font-medium uppercase tracking-[0.08em] text-muted">
+            <h3 className="text-xs font-semibold text-text">
               Cited by · this case <span className="num">({links.length})</span>
             </h3>
             {links.length === 0 ? (

@@ -1,11 +1,12 @@
 "use client";
 
-import { motion, useScroll, useSpring } from "motion/react";
+import { motion, useMotionValue, useScroll, useSpring, useTransform } from "motion/react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRef, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { useRef, useSyncExternalStore, type CSSProperties, type PointerEvent, type ReactNode } from "react";
 import { Airlock } from "@/components/case/Airlock";
 import { rawTextInInvestigator } from "@/components/case/CaseView";
+import { HeroField } from "@/components/landing/HeroField";
 import { Reveal } from "@/components/landing/Reveal";
 import { ActorTag } from "@/components/primitives";
 import type { ActorType } from "@/lib/labels";
@@ -78,74 +79,25 @@ export function Landing() {
 
   return (
     <div>
-      {/* Hero: charcoal and type-led. The mascot stands on the first node of the spine, which drops into the fact strip. */}
-      <section className="palette-charcoal relative overflow-hidden bg-bg text-text">
-        <div className="mx-auto grid min-h-[calc(100svh-56px-53px)] w-full max-w-[1240px] gap-y-12 px-5 pt-14 sm:px-8 lg:grid-cols-12 lg:gap-x-8 lg:pt-0">
-          <div className="flex flex-col justify-center pb-14 lg:col-span-8 lg:pb-14 lg:pt-10">
-            <p className="rise font-mono text-[11px] uppercase tracking-[0.18em] text-muted" style={rise(0)}>
-              MOMO Sentinel <span className="text-sage">/</span> payment triage
-            </p>
-            <h1 className="mt-6 text-[clamp(2.75rem,1.2rem+4.8vw,5.5rem)] font-semibold leading-[0.92] tracking-[-0.05em] text-text">
-              <span className="rise block" style={rise(80)}>The model</span>
-              <span className="rise block" style={rise(160)}>investigates.</span>
-              <span className="rise block text-sage" style={rise(260)}>The code decides.</span>
-            </h1>
-            <p className="rise mt-8 max-w-[30rem] text-[15px] leading-7 text-muted" style={rise(380)}>
-              MOMO triages flagged payments for a bank. Attacker-written text is quarantined in code, the model sees only typed
-              facts, and funds move only after a pure-Python policy check and, where required, a recorded human approval.
-            </p>
-            <div className="rise mt-8 flex flex-wrap items-center gap-3" style={rise(460)}>
-              <Link
-                href="/queue"
-                className={`group inline-flex h-12 items-center gap-2.5 rounded-md bg-text px-6 text-sm font-medium text-bg hover:bg-text/90 ${PRESS}`}
-              >
-                Open the queue <Arrow />
-              </Link>
-              {b && (
-                <Link
-                  href={`/case/${b.alert_id}`}
-                  className={`group inline-flex h-12 items-center gap-2.5 rounded-md border border-hairline-strong px-6 text-sm font-medium text-text hover:border-sage hover:text-sage ${PRESS}`}
-                >
-                  Watch Case B <Arrow />
-                </Link>
-              )}
-            </div>
-          </div>
+      <Hero caseB={b?.alert_id ?? null} />
 
-          <figure className="rise relative flex flex-col items-center justify-end lg:col-span-4" style={rise(300)}>
-            <Image
-              src="/brand/momo-mascot.png"
-              alt="MOMO, the guard mascot, holding a shield with a padlock"
-              width={1024}
-              height={1024}
-              priority
-              className="aspect-square h-auto w-full max-w-[14rem] object-contain sm:max-w-[18rem] lg:max-w-[22rem]"
-            />
-            <span aria-hidden className="h-14 w-[2px] bg-sage" />
-            <span aria-hidden className="absolute -bottom-[5px] z-[1] h-2.5 w-2.5 rounded-[2px] bg-sage" />
-          </figure>
-        </div>
-
-        <div className="relative border-t border-hairline">
-          <ul className="mx-auto flex w-full max-w-[1240px] flex-wrap gap-x-7 gap-y-2 px-5 py-4 font-mono text-[11px] uppercase tracking-[0.12em] text-muted sm:px-8">
-            {PROOF.map((p) => (
-              <li key={p} className="flex items-center gap-2">
-                <span aria-hidden className="h-1 w-1 bg-sage" />
-                <span className={p.includes("عربي") ? "normal-case" : undefined}>{p}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
+      {/* The page rises over the fold like a sheet: paper with a rounded leading edge. */}
+      <div className="relative z-[2] -mt-8 rounded-t-[32px] bg-bg pt-10">
+      {/* Plain facts about the build, on paper. Nothing here is a statistic. */}
+      <ul aria-label="About this demo" className="mx-auto flex w-full max-w-[1240px] flex-wrap justify-center gap-x-8 gap-y-2 px-5 pt-4 text-sm text-muted sm:px-8">
+        {PROOF.map((p) => (
+          <li key={p} className="flex items-center gap-2">
+            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-sage" />
+            <span>{p}</span>
+          </li>
+        ))}
+      </ul>
 
       {/* Mechanism: the spine. The heading holds while the steps scroll; the teal line draws with reading progress. */}
       <section aria-labelledby="mechanism" className="mx-auto w-full max-w-[1240px] px-5 py-24 sm:px-8 lg:py-32">
         <div className="grid gap-12 lg:grid-cols-12 lg:gap-x-8">
           <Reveal className="lg:sticky lg:top-28 lg:col-span-4 lg:self-start">
-            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">
-              <span className="text-sage">01</span> / The pipeline
-            </p>
-            <h2 id="mechanism" className="mt-5 text-[clamp(2.25rem,1.3rem+2.8vw,3.75rem)] font-semibold leading-[0.98] tracking-[-0.045em] text-text">
+            <h2 id="mechanism" className="scroll-mt-24 text-[clamp(2.25rem,1.3rem+2.8vw,3.75rem)] font-semibold leading-[0.98] tracking-[-0.045em] text-text">
               How a hostile memo is stopped.
             </h2>
             <p className="mt-6 max-w-sm text-[15px] leading-7 text-muted">
@@ -159,13 +111,14 @@ export function Landing() {
       </section>
 
       {/* Live exhibit: real Case B data, all states preserved. */}
-      <section aria-labelledby="exhibit" className="border-y border-hairline bg-surface">
+      <section aria-labelledby="exhibit" className="mx-3 rounded-[28px] bg-surface shadow-card sm:mx-5">
         <div className="mx-auto w-full max-w-[1240px] px-5 py-24 sm:px-8 lg:py-28">
           <Reveal className="mb-12 flex flex-wrap items-end justify-between gap-6">
             <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">
-                <span className="text-sage">02</span> / Live · Case B
-              </p>
+              <span className="inline-flex h-7 items-center gap-2 rounded-full border border-hairline px-3 text-xs font-medium text-muted">
+                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-sage" />
+                Live from the backend: Case B
+              </span>
               <h2 id="exhibit" className="mt-5 max-w-2xl text-[clamp(2rem,1.2rem+2.4vw,3.25rem)] font-semibold leading-[1] tracking-[-0.045em] text-text">
                 An injected memo, held at the gate.
               </h2>
@@ -188,9 +141,7 @@ export function Landing() {
       {/* Ordinary navigation into the console. */}
       <nav aria-label="Console" className="mx-auto w-full max-w-[1240px] px-5 py-24 sm:px-8 lg:py-28">
         <Reveal>
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">
-            <span className="text-sage">03</span> / Into the console
-          </p>
+          <h2 className="text-[clamp(2rem,1.2rem+2.4vw,3.25rem)] font-semibold leading-[1] tracking-[-0.045em] text-text">Open the console.</h2>
         </Reveal>
         <ul className="mt-8 border-t border-hairline">
           {ROUTES.map((r, i) => (
@@ -205,11 +156,93 @@ export function Landing() {
 
       <footer className="border-t border-hairline">
         <div className="mx-auto flex w-full max-w-[1240px] flex-wrap items-center justify-between gap-3 px-5 py-6 text-xs text-muted sm:px-8">
-          <span>Team MOMO · TechX Hackathon</span>
-          <span>Synthetic data · simulation only</span>
+          <span>Team MOMO, TechX Hackathon</span>
+          <span>Synthetic data. Simulation only.</span>
         </div>
       </footer>
+      </div>
     </div>
+  );
+}
+
+/**
+ * The graphite fold: the mascot and the name, centred, one line of copy, two ways in.
+ * Entrance (CSS, so it runs before hydration and reduced motion skips it): light 0 ms, mascot 120 ms,
+ * letters from 380 ms 70 ms apart, copy 800 ms, buttons 900 ms, particles from about 1.1 s.
+ * Scrolling away lifts and fades the content; the pointer shifts the mascot by at most 6 px.
+ */
+function Hero({ caseB }: { caseB: string | null }) {
+  const ref = useRef<HTMLElement>(null);
+  const motionOK = useMotionOK();
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
+  const lift = useTransform(scrollYProgress, [0, 1], motionOK ? [0, -90] : [0, 0]);
+  const fade = useTransform(scrollYProgress, [0, 0.55], [1, 0]);
+  const px = useMotionValue(0);
+  const py = useMotionValue(0);
+  const sx = useSpring(px, { stiffness: 120, damping: 20 });
+  const sy = useSpring(py, { stiffness: 120, damping: 20 });
+
+  function onPointerMove(e: PointerEvent<HTMLElement>) {
+    if (!motionOK || e.pointerType !== "mouse") return;
+    const r = e.currentTarget.getBoundingClientRect();
+    px.set(((e.clientX - r.left) / r.width - 0.5) * 12);
+    py.set(((e.clientY - r.top) / r.height - 0.5) * 12);
+  }
+
+  return (
+    <section
+      ref={ref}
+      onPointerMove={onPointerMove}
+      className="palette-charcoal relative isolate -mt-14 flex min-h-[100svh] flex-col overflow-hidden bg-bg pt-14 text-text"
+    >
+      <div aria-hidden className="hero-light hero-glow absolute inset-0" />
+      <div aria-hidden className="hero-perf absolute inset-0" />
+      <HeroField />
+
+      <motion.div style={{ y: lift, opacity: fade }} className="relative z-[1] flex flex-1 flex-col items-center justify-center px-5 pb-24 pt-6 text-center">
+        <motion.div style={{ x: sx, y: sy }}>
+          <Image
+            src="/brand/momo-mascot.png"
+            alt="MOMO, the guard mascot, holding a shield with a padlock"
+            width={1024}
+            height={1024}
+            priority
+            className="hero-mascot aspect-square h-auto w-[clamp(8.5rem,min(16vw,27svh),17rem)] object-contain"
+          />
+        </motion.div>
+        <h1 aria-label="MOMO" className="mt-1 flex text-[clamp(4rem,min(12vw,19svh),10.5rem)] font-bold leading-[0.86] tracking-[-0.065em] text-text">
+          {["M", "O", "M", "O"].map((l, i) => (
+            <span key={i} aria-hidden className="inline-block overflow-hidden pb-[0.04em] pe-[0.02em]">
+              <span className="hero-letter inline-block" style={rise(380 + i * 70)}>{l}</span>
+            </span>
+          ))}
+        </h1>
+        <p className="rise mt-5 max-w-xl text-[17px] leading-7 text-muted" style={rise(800)}>
+          Payment triage where the model investigates and the code decides.
+        </p>
+        <div className="rise mt-8 flex flex-wrap items-center justify-center gap-3" style={rise(900)}>
+          <Link href="/queue" className={`inline-flex h-11 items-center rounded-full bg-text px-6 text-sm font-medium text-bg hover:bg-text/90 ${PRESS}`}>
+            Open the console
+          </Link>
+          {caseB && (
+            <Link href={`/case/${caseB}`} className={`inline-flex h-11 items-center rounded-full border border-hairline-strong px-6 text-sm font-medium text-text hover:border-text/60 ${PRESS}`}>
+              Watch Case B
+            </Link>
+          )}
+        </div>
+      </motion.div>
+
+      <a
+        href="#mechanism"
+        aria-label="Scroll to how a hostile memo is stopped"
+        className="rise absolute inset-x-0 bottom-8 z-[1] mx-auto flex w-10 justify-center rounded-full py-1"
+        style={rise(1300)}
+      >
+        <span aria-hidden className="relative h-9 w-px overflow-hidden bg-hairline-strong">
+          <span className="hero-cue absolute inset-x-0 top-0 h-3 bg-text/70" />
+        </span>
+      </a>
+    </section>
   );
 }
 
@@ -221,18 +254,18 @@ function Spine() {
 
   return (
     <ol ref={list} className="relative lg:col-span-8">
-      <span aria-hidden className="absolute bottom-10 start-[5px] top-10 w-[2px] bg-hairline" />
+      <span aria-hidden className="absolute bottom-10 start-[5px] top-10 w-[2px] rounded-full bg-hairline" />
       <motion.span
         aria-hidden
-        className="absolute bottom-10 start-[5px] top-10 w-[2px] origin-top bg-sage"
+        className="absolute bottom-10 start-[5px] top-10 w-[2px] origin-top rounded-full bg-sage"
         style={motionOK ? { scaleY: draw } : undefined}
       />
       {STEPS.map((s) => (
         <li key={s.n} className="relative border-b border-hairline last:border-b-0">
-          <span aria-hidden className="absolute start-0 top-[36px] z-[1] h-3 w-3 rounded-[2px] border-2 border-sage bg-bg" />
+          <span aria-hidden className="absolute start-0 top-[36px] z-[1] h-3 w-3 rounded-full border-2 border-sage bg-bg" />
           <Reveal y={16} className="grid gap-x-8 gap-y-3 py-7 ps-10 md:grid-cols-[14rem_1fr]">
             <div className="flex items-baseline gap-3">
-              <span className="font-mono text-xs text-sage">{s.n}</span>
+              <span className="num text-sm font-medium text-muted">{Number(s.n)}</span>
               <h3 className="text-xl font-semibold tracking-[-0.025em] text-text">{s.title}</h3>
             </div>
             <div className="flex flex-col items-start gap-3">
@@ -251,13 +284,13 @@ function RouteLink({ href, label, note }: { href: string; label: string; note: s
     <Link href={href} className="group relative flex flex-wrap items-baseline gap-x-8 gap-y-1 py-6 outline-offset-4">
       <span
         aria-hidden
-        className="absolute inset-y-3 start-0 w-[2px] origin-center scale-y-0 bg-sage transition-transform duration-300 ease-out group-hover:scale-y-100 group-focus-visible:scale-y-100"
+        className="absolute inset-y-3 start-0 w-[2px] origin-center scale-y-0 rounded-full bg-sage transition-transform duration-300 ease-out group-hover:scale-y-100 group-focus-visible:scale-y-100"
       />
       <span className="text-[clamp(1.5rem,1.1rem+1.4vw,2.25rem)] font-semibold tracking-[-0.035em] text-text transition-[color,transform] duration-300 ease-out group-hover:translate-x-4 group-hover:text-sage group-focus-visible:translate-x-4 group-active:scale-[0.99]">
         {label}
       </span>
       <span className="text-sm text-muted transition-transform duration-300 ease-out group-hover:translate-x-4 group-focus-visible:translate-x-4">{note}</span>
-      <span className="ms-auto text-muted transition-colors duration-200 group-hover:text-sage">
+      <span aria-hidden className="ms-auto inline-flex h-9 w-9 items-center justify-center rounded-full border border-hairline text-muted transition-colors duration-200 group-hover:border-sage group-hover:text-sage">
         <Arrow />
       </span>
     </Link>

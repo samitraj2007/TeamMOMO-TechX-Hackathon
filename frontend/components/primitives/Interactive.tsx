@@ -91,7 +91,7 @@ export function ExpandableCards({ items, className, columns = "grid-cols-3" }: {
               className="sheet press relative flex min-w-0 flex-col items-start gap-1 overflow-hidden rounded-panel border border-hairline bg-surface p-4 text-start hover:border-hairline-strong"
             >
               {it.tone && <span aria-hidden className={cx("absolute bottom-3 start-0 top-3 w-0.5 rounded-e-sm", TONE_BG[it.tone])} />}
-              <motion.span layout="position" className="text-2xs font-medium uppercase tracking-[0.1em] text-muted">{it.title}</motion.span>
+              <motion.span layout="position" className="text-xs font-medium text-muted">{it.title}</motion.span>
               <motion.span layout="position" className="text-sm text-text">{it.summary}</motion.span>
             </motion.button>
           ),
@@ -109,7 +109,7 @@ export function ExpandableCards({ items, className, columns = "grid-cols-3" }: {
           >
             {active.tone && <span aria-hidden className={cx("absolute bottom-4 start-0 top-4 w-0.5 rounded-e-sm", TONE_BG[active.tone])} />}
             <div className="flex items-center gap-2">
-              <motion.span layout="position" className="text-2xs font-medium uppercase tracking-[0.1em] text-muted">{active.title}</motion.span>
+              <motion.span layout="position" className="text-xs font-medium text-muted">{active.title}</motion.span>
               <IconButton label="Collapse" className="ms-auto" onClick={() => setOpen(null)} autoFocus>
                 <IconClose size={14} />
               </IconButton>

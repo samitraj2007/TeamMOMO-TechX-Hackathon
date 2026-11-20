@@ -50,7 +50,7 @@ export function Drawer({
           <>
             <motion.div
               key="scrim"
-              className="fixed inset-0 z-40 bg-[#1C211E]/40"
+              className="fixed inset-0 z-40 bg-[#111213]/30 backdrop-blur-[2px]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -65,14 +65,14 @@ export function Drawer({
               aria-labelledby={titleId}
               tabIndex={-1}
               style={{ width }}
-              className="sheet fixed inset-y-2 end-2 z-50 flex max-w-[calc(100%-16px)] flex-col overflow-hidden rounded-panel border border-hairline-strong bg-surface outline-none"
+              className="fixed inset-y-3 end-3 z-50 flex max-w-[calc(100%-24px)] flex-col overflow-hidden rounded-sheet border border-hairline bg-surface shadow-pop outline-none"
               initial={{ opacity: 0, x: 24 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 24 }}
               transition={SPRING.soft}
             >
-              <header className="flex h-11 shrink-0 items-center gap-2 border-b border-hairline px-4">
-                <h2 id={titleId} className="min-w-0 truncate text-sm font-medium text-text">{title}</h2>
+              <header className="flex h-12 shrink-0 items-center gap-2 border-b border-hairline px-5">
+                <h2 id={titleId} className="min-w-0 truncate text-md font-semibold text-text">{title}</h2>
                 <div className="ms-auto flex items-center gap-1">
                   {actions}
                   <IconButton label="Close" onClick={onClose}>
@@ -80,7 +80,7 @@ export function Drawer({
                   </IconButton>
                 </div>
               </header>
-              <div className="min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
+              <div className="min-h-0 flex-1 overflow-y-auto p-5">{children}</div>
             </motion.div>
           </>
         )}
@@ -143,7 +143,7 @@ export function HoverCard({
               onMouseEnter={() => clearTimeout(timer.current)}
               onMouseLeave={hide}
               style={{ ...pos, width }}
-              className="sheet fixed z-50 rounded-panel border border-hairline-strong bg-overlay p-3 text-sm text-text"
+              className="fixed z-50 rounded-panel border border-hairline bg-overlay p-3 text-sm text-text shadow-pop"
               initial={{ opacity: 0, y: 4, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 2 }}

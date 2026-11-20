@@ -32,6 +32,7 @@ export const STEP_LABEL: Record<string, string> = {
 
 export const STATUS_TONE: Record<string, Tone> = {
   DONE: "sage",
+  OK: "sage",
   FLAGGED: "amber",
   DEGRADED: "red",
   FAILED: "red",

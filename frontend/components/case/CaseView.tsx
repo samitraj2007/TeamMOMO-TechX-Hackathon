@@ -91,18 +91,21 @@ function CaseBody({
   const rawCount = run ? rawTextInInvestigator(run, detail.raw_fields) : null;
 
   return (
-    <div className="flex flex-col gap-5">
-      <header className="flex flex-wrap items-end gap-x-6 gap-y-4 border-b border-hairline pb-5">
-        <div className="flex min-w-0 flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em] text-muted">
-            {s.demo_tag && <Tag tone="amber" variant="tint">{s.demo_tag}</Tag>}
-            <span className="num text-text">{s.alert_id}</span>
-            <span aria-hidden>·</span>
-            <span>{s.rule_id}</span>
+    <div className="route-in flex flex-col gap-5 px-2 pb-8 pt-1">
+      <header className="flex flex-wrap items-end gap-x-6 gap-y-4 pb-1">
+        <div className="flex min-w-0 flex-col gap-2.5">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
+            {s.demo_tag && (
+              <span title={`Demo case ${s.demo_tag}`} className="num inline-flex h-5 w-5 items-center justify-center rounded-full bg-text text-[10px] font-semibold text-bg">
+                {s.demo_tag}
+              </span>
+            )}
+            <span className="num font-medium text-text">{s.alert_id}</span>
+            <Tag tone="neutral" mono>{s.rule_id}</Tag>
           </div>
-          <h1 className="text-[28px] font-semibold leading-8 tracking-[-0.03em] text-text">{s.title}</h1>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
-            <Amount value={s.amount} currency={s.currency} className="font-medium text-text" />
+          <h1 className="text-[30px] font-semibold leading-9 tracking-[-0.03em] text-text">{s.title}</h1>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
+            <Amount value={s.amount} currency={s.currency} className="font-semibold text-text" />
             <span>{s.payee_name ?? "No payee name"}</span>
             <Timestamp iso={detail.ts} />
           </div>
@@ -121,7 +124,7 @@ function CaseBody({
         </Callout>
       )}
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(280px,340px)_minmax(0,1fr)_320px]">
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(264px,300px)_minmax(0,1fr)_minmax(280px,316px)] 2xl:gap-5">
         <Panel title="Pipeline" tint="surface" className="xl:sticky xl:top-0">
           {timeline.isPending ? <LoadingState label="Loading the audit timeline" lines={4} />
             : timeline.isError ? <ErrorState error={timeline.error} onRetry={() => void timeline.refetch()} />
@@ -271,7 +274,8 @@ function ReportPane({ report, hasRun }: { report: ReturnType<typeof useReport>; 
   }
   const r = report.data;
   return (
-    <Panel title="Suspicious activity report" tint="surface" eyebrow={<Tag tone={r.verifier_passed ? "sage" : "amber"}>{r.verifier_passed ? "verifier passed" : "verifier failed"}</Tag>}>
+    <Panel title="Suspicious activity report" tint="surface" className="wrap-anywhere"
+      actions={<Tag tone={r.verifier_passed ? "sage" : "amber"} variant="tint">{r.verifier_passed ? "Verifier passed" : "Verifier failed"}</Tag>}>
       <p className="mb-3 text-xs text-muted">
         <span className="num">{r.template_version}</span> · {r.accepted} accepted · {r.rejected} rejected
         {r.llm_rejected > 0 && <span className="text-red-text"> · {r.llm_rejected} model sentences rejected</span>}

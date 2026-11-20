@@ -103,7 +103,7 @@ function PaneItem({
             className="press flex h-7 cursor-grab touch-none items-center gap-2 rounded-control px-1.5 text-muted hover:bg-raised hover:text-text active:cursor-grabbing"
           >
             <GripIcon />
-            <span className="text-2xs font-medium uppercase tracking-[0.1em]">{pane.title}</span>
+            <span className="text-xs font-medium">{pane.title}</span>
           </div>
           {pane.actions && <div className="ms-auto flex items-center gap-1">{pane.actions}</div>}
         </header>

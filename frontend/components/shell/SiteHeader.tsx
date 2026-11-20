@@ -28,21 +28,31 @@ function useHydratedPath(): string {
   return useSyncExternalStore(subscribePath, () => path, () => "");
 }
 
+const onScroll = (onChange: () => void) => {
+  window.addEventListener("scroll", onChange, { passive: true });
+  window.addEventListener("resize", onChange, { passive: true });
+  return () => {
+    window.removeEventListener("scroll", onChange);
+    window.removeEventListener("resize", onChange);
+  };
+};
+
 function useScrolled(): boolean {
-  return useSyncExternalStore(
-    (onChange) => {
-      window.addEventListener("scroll", onChange, { passive: true });
-      return () => window.removeEventListener("scroll", onChange);
-    },
-    () => window.scrollY > 8,
-    () => false,
-  );
+  return useSyncExternalStore(onScroll, () => window.scrollY > 8, () => false);
 }
 
+/** True once the landing page has scrolled past most of its graphite fold, so the header can turn light. */
+function usePastFold(): boolean {
+  return useSyncExternalStore(onScroll, () => window.scrollY > window.innerHeight * 0.8, () => false);
+}
+
+const CONSOLE = ["/queue", "/transactions", "/case", "/audit", "/eval", "/ingest"];
+
+/** One status inside the grouped status pill: a dot (filled when healthy) and a short label. */
 function Chip({ tone, title, children }: { tone: Tone; title?: string; children: string }) {
   return (
-    <span title={title} className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-control border border-hairline bg-surface px-2 text-2xs text-text">
-      <span aria-hidden className={cx("h-1.5 w-1.5", TONE_BG[tone])} />
+    <span title={title} className="inline-flex shrink-0 items-center gap-1.5 px-2 text-xs text-text">
+      <span aria-hidden className={cx("h-1.5 w-1.5 rounded-full", TONE_BG[tone], tone === "sage" && "shadow-[0_0_0_3px_rgb(47_93_78/0.12)]")} />
       {children}
     </span>
   );
@@ -59,7 +69,9 @@ function StatusDot({ label, on }: { label: string; on: boolean }) {
 export function SiteHeader({ onOpenPalette }: { onOpenPalette: () => void }) {
   const path = useHydratedPath();
   const quiet = path === "/";
+  const inConsole = CONSOLE.some((p) => path === p || path.startsWith(`${p}/`));
   const scrolled = useScrolled();
+  const pastFold = usePastFold();
   const { lang, setLang, demoSpeed, setDemoSpeed } = usePrefs();
   const health = useHealth();
   const verify = useVerify();
@@ -88,17 +100,22 @@ export function SiteHeader({ onOpenPalette }: { onOpenPalette: () => void }) {
   return (
     <header
       className={cx(
-        "sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b px-3",
+        "sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b px-5 transition-[background-color,border-color] duration-300",
         quiet
-          ? "palette-charcoal border-hairline bg-bg"
-          : cx("border-hairline", scrolled ? "bg-bg/75 backdrop-blur-md" : "bg-bg"),
+          ? pastFold
+            ? "border-hairline/70 bg-bg/80 backdrop-blur-xl"
+            : cx("palette-charcoal", scrolled ? "border-hairline bg-bg/80 backdrop-blur-xl" : "border-transparent bg-transparent")
+          : inConsole
+            ? "border-transparent bg-bg"
+            : cx("border-hairline", scrolled ? "bg-bg/75 backdrop-blur-md" : "bg-bg"),
       )}
     >
-      <Link href="/" aria-label="MOMO Sentinel home" className="flex shrink-0 items-center gap-3 pe-2">
+      <Link href="/" aria-label="MOMO Sentinel home" className="press flex shrink-0 items-center gap-3 rounded-control pe-2">
         <MomoLockup size={30} />
-        {!quiet && <span className="hidden border-s border-hairline ps-3 font-mono text-[10px] uppercase tracking-[0.14em] text-muted xl:inline">Triage console</span>}
+        {inConsole && <span className="hidden border-s border-hairline ps-3 text-xs text-muted xl:inline">Triage console</span>}
       </Link>
 
+      {!inConsole && (
       <nav aria-label="Sections" className={cx("h-full shrink-0 items-stretch", quiet ? "ms-auto hidden md:flex" : "flex")}>
         {NAV.map((item) => {
           const active = path === item.href || path.startsWith(`${item.href}/`);
@@ -124,7 +141,7 @@ export function SiteHeader({ onOpenPalette }: { onOpenPalette: () => void }) {
                 active && (
                   <motion.span
                     layoutId="nav-underline"
-                    className="absolute inset-x-2 bottom-0 h-0.5 bg-sage"
+                    className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-sage"
                     transition={{ type: "spring", stiffness: 380, damping: 34 }}
                   />
                 )
@@ -133,9 +150,10 @@ export function SiteHeader({ onOpenPalette }: { onOpenPalette: () => void }) {
           );
         })}
       </nav>
+      )}
 
       {quiet && (
-        <Link href="/queue" className="ms-auto inline-flex h-8 items-center rounded-md border border-hairline-strong px-3 text-sm text-text hover:border-sage hover:text-sage md:hidden">
+        <Link href="/queue" className="ms-auto inline-flex h-8 items-center rounded-full border border-hairline-strong px-3.5 text-sm text-text hover:border-text/50 md:hidden">
           Console
         </Link>
       )}
@@ -147,7 +165,7 @@ export function SiteHeader({ onOpenPalette }: { onOpenPalette: () => void }) {
         </span>
       )}
 
-      {!quiet && (
+      {!quiet && !inConsole && (
         <button
           type="button"
           onClick={onOpenPalette}
@@ -159,10 +177,14 @@ export function SiteHeader({ onOpenPalette }: { onOpenPalette: () => void }) {
       )}
 
       {!quiet && (
-      <div className="flex shrink-0 items-center gap-2">
-        <Chip tone={backend.tone}>{backend.text}</Chip>
-        <Chip tone={provider.tone} title={provider.title}>{provider.text}</Chip>
-        <Chip tone={chain.tone} title={chain.title}>{chain.text}</Chip>
+      <div className="ms-auto flex shrink-0 items-center gap-2.5">
+        <div role="group" aria-label="System status" className="flex h-8 items-center rounded-full border border-hairline bg-surface px-1 shadow-sheen">
+          <Chip tone={backend.tone}>{backend.text}</Chip>
+          <span aria-hidden className="h-3.5 w-px bg-hairline" />
+          <Chip tone={provider.tone} title={provider.title}>{provider.text}</Chip>
+          <span aria-hidden className="h-3.5 w-px bg-hairline" />
+          <Chip tone={chain.tone} title={chain.title}>{chain.text}</Chip>
+        </div>
         <SegmentedTabs<"en" | "ar">
           size="sm"
           label="Language"
@@ -170,7 +192,7 @@ export function SiteHeader({ onOpenPalette }: { onOpenPalette: () => void }) {
           onChange={setLang}
           options={[{ value: "en", label: "EN" }, { value: "ar", label: <span className="ar text-[11px] leading-none">عربي</span> }]}
         />
-        <span className="hidden text-2xs text-muted 2xl:inline">Demo speed</span>
+        <span className="hidden text-xs text-muted 2xl:inline">Demo speed</span>
         <SegmentedTabs<"0.5" | "1" | "2">
           size="sm"
           label="Demo speed"

@@ -8,6 +8,7 @@ import {
 } from "@/components/primitives";
 import { ApiError, api } from "@/lib/api";
 import { shortHash, timestamp } from "@/lib/format";
+import { useHydrated } from "@/lib/hydrated";
 import { ACTOR_LABEL, type ActorType } from "@/lib/labels";
 import { useCaseAudit, useCases, useVerify } from "@/lib/queries";
 import type { AuditEntry } from "@/lib/types";
@@ -36,7 +37,11 @@ function useGlobalAudit() {
 export function AuditView() {
   const cases = useCases(false);
   const [picked, setPicked] = useState<string>("");
-  const caseId = picked || cases.data?.[0]?.alert_id || "";
+  // The header fetches the case list and chain status too, so either can be cached before this page hydrates.
+  // Render them only after hydration; see useHydrated.
+  const hydrated = useHydrated();
+  const caseList = hydrated ? cases.data : undefined;
+  const caseId = picked || caseList?.[0]?.alert_id || "";
   const audit = useCaseAudit(caseId);
   const verify = useVerify();
   const global = useGlobalAudit();
@@ -52,15 +57,15 @@ export function AuditView() {
   ];
 
   return (
-    <div className="flex flex-col gap-5 p-5">
+    <div className="route-in flex flex-col gap-6 px-2 pb-8 pt-1">
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="flex flex-col gap-1">
-            <h1 className="text-base font-medium text-text">Case audit</h1>
+            <h1 className="text-[30px] font-semibold leading-9 tracking-[-0.03em] text-text">Case audit</h1>
             <p className="text-sm text-muted">Entries from GET /cases/{caseId || "{id}"}/audit. Verify checks the whole chain.</p>
           </div>
-          <Select aria-label="Case" value={caseId} onChange={(e) => setPicked(e.target.value)} className="w-72" disabled={!cases.data}>
-            {(cases.data ?? []).map((c) => (
+          <Select aria-label="Case" value={caseId} onChange={(e) => setPicked(e.target.value)} className="w-72" disabled={!caseList}>
+            {(caseList ?? []).map((c) => (
               <option key={c.alert_id} value={c.alert_id}>
                 {c.demo_tag ? `${c.demo_tag} · ` : ""}{c.alert_id}
               </option>
@@ -68,7 +73,7 @@ export function AuditView() {
           </Select>
         </div>
         {cases.isError && <ErrorState error={cases.error} onRetry={() => void cases.refetch()} />}
-        {!caseId && cases.data && <EmptyState title="No cases to audit" body="The demo queue is empty, so there is no chain to open." />}
+        {!caseId && caseList && <EmptyState title="No cases to audit" body="The demo queue is empty, so there is no chain to open." />}
         {caseId && audit.isLoading && <LoadingState label={`Loading audit for ${caseId}`} />}
         {caseId && audit.isError && <ErrorState error={audit.error} onRetry={() => void audit.refetch()} />}
         {audit.data && audit.data.length === 0 && (
@@ -84,18 +89,18 @@ export function AuditView() {
             return { ok: result.ok, first_bad_record_id: result.first_bad_record_id };
           }}
         />
-        {verify.data && (
+        {hydrated && verify.data && (
           <p className="num text-xs text-muted">
             GET /audit/verify · {verify.data.ok ? "ok" : verify.data.reason} · {verify.data.entries} entries · {shortHash(verify.data.head_hash)}
           </p>
         )}
-        {verify.data && !verify.data.ok && (
+        {hydrated && verify.data && !verify.data.ok && (
           <ErrorState error={new Error(`${verify.data.reason ?? "Chain failed"} at ${verify.data.first_bad_record_id ?? "unknown"}`)} />
         )}
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-base font-medium text-text">Global audit</h2>
+        <h2 className="text-lg font-semibold tracking-[-0.01em] text-text">Global audit</h2>
         {global.isLoading && <LoadingState label="Checking GET /audit" lines={2} />}
         {global.isError && <ErrorState error={global.error} onRetry={() => void global.refetch()} />}
         {global.data === null && (

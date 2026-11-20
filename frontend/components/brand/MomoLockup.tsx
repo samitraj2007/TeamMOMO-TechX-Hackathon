@@ -13,7 +13,7 @@ export function MomoLockup({ size = 32, sub = "Sentinel", className }: { size?: 
       <Image src={MASCOT} alt="" width={size} height={size} priority className="shrink-0 select-none object-contain" draggable={false} />
       <span className="flex items-baseline gap-2 leading-none">
         <span className="text-[17px] font-semibold tracking-[-0.03em] text-text">MOMO</span>
-        {sub && <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted">{sub}</span>}
+        {sub && <span className="text-xs font-medium text-muted">{sub}</span>}
       </span>
     </span>
   );

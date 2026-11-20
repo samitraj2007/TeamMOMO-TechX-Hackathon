@@ -14,11 +14,11 @@ export interface Column<T> {
   render: (row: T) => ReactNode;
 }
 
-const ROW = 32;
+const ROW = 40;
 const OVERSCAN = 8;
 
 /**
- * Dense table with a sticky header, a left status bar per row and windowed rendering (fixed 32px rows),
+ * Dense table with a sticky header, a left status bar per row and windowed rendering (fixed 40px rows),
  * so 1,000 rows stay cheap. Arrow keys move focus between rows; Enter activates.
  */
 export function DataTable<T>({
@@ -73,10 +73,10 @@ export function DataTable<T>({
     <div role="table" aria-label={label} aria-rowcount={rows.length + 1}
       className={cx("sheet flex flex-col overflow-hidden rounded-panel border border-hairline bg-surface", className)}>
       <div role="row" style={template}
-        className="grid h-9 shrink-0 items-center border-b border-hairline-strong bg-raised/80 ps-3 pe-2">
+        className="grid h-10 shrink-0 items-center border-b border-hairline ps-4 pe-3">
         {columns.map((c) => (
           <div key={c.key} role="columnheader"
-            className={cx("flex min-w-0 px-1 text-2xs font-medium uppercase tracking-[0.08em] text-muted", align(c.align))}>
+            className={cx("flex min-w-0 px-1.5 text-xs font-medium text-muted", align(c.align))}>
             {c.header}
           </div>
         ))}
@@ -101,14 +101,14 @@ export function DataTable<T>({
                   onKeyDown={(e) => onKey(e, index, row)}
                   style={{ ...template, top: index * ROW, height: ROW }}
                   className={cx(
-                    "absolute inset-x-0 grid items-center border-b border-hairline/60 ps-3 pe-2 text-sm outline-none transition-colors duration-100",
-                    onRowActivate && "cursor-pointer hover:bg-raised/70 focus-visible:bg-raised focus-visible:outline-offset-[-2px]",
+                    "absolute inset-x-0 grid items-center border-b border-hairline/60 ps-4 pe-3 text-sm outline-none transition-colors duration-150",
+                    onRowActivate && "cursor-pointer hover:bg-raised focus-visible:bg-raised focus-visible:outline-offset-[-2px]",
                   )}
                 >
-                  {tone && <span aria-hidden className={cx("absolute inset-y-0 start-0 w-0.5", TONE_BG[tone])} />}
+                  {tone && <span aria-hidden className={cx("absolute inset-y-2.5 start-1.5 w-[3px] rounded-full", TONE_BG[tone])} />}
                   {columns.map((c) => (
                     <div key={c.key} role="cell"
-                      className={cx("flex min-w-0 items-center truncate px-1", c.mono && "num", align(c.align))}>
+                      className={cx("flex min-w-0 items-center truncate px-1.5", c.mono && "num", align(c.align))}>
                       {c.render(row)}
                     </div>
                   ))}

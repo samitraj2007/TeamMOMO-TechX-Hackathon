@@ -8,6 +8,8 @@ import {
 import { Banner } from "@/components/primitives";
 import { apiRecordSource, RecordProvider } from "@/components/records/Records";
 import { t } from "@/lib/i18n";
+import { useHydrated } from "@/lib/hydrated";
+import { ROUTE_TONE } from "@/lib/labels";
 import { usePrefs } from "@/lib/prefs";
 import { useCases, useHealth } from "@/lib/queries";
 import type { Role } from "@/lib/types";
@@ -41,8 +43,9 @@ export function ConsoleFrame({ children }: { children: ReactNode }) {
   const health = useHealth();
   const cases = useCases(false);
   const [role, setRole] = useState<Role>("ANALYST");
-  const [rail, setRail] = useState(false);
   const [sidebar, setSidebar] = useState(true);
+  // Case screens need the width: the sidebar starts collapsed there and remembers its own choice.
+  const [sidebarOnCase, setSidebarOnCase] = useState(false);
   const [closed, setClosed] = useState<string[]>([]);
   const openPalette = useOpenPalette();
 
@@ -56,32 +59,29 @@ export function ConsoleFrame({ children }: { children: ReactNode }) {
     : "queue";
 
   const link = (id: string, label: string, icon: ReactNode, href: string): NavItem => ({ id, label, icon, href });
-  const ribbon: NavItem[] = [
-    link("queue", t("queue", lang), <IconQueue />, "/queue"),
-    link("transactions", t("transactions", lang), <IconTransactions />, "/transactions"),
-    link("cases", t("cases", lang), <IconCases />, "/queue"),
-    link("audit", t("audit", lang), <IconAudit />, "/audit"),
-    link("eval", t("eval", lang), <IconEval />, "/eval"),
-    link("ingest", t("ingest", lang), <IconIngest />, "/ingest"),
-  ];
-  const demoCases = cases.data ?? [];
+  // The server render has no case list; the browser may already hold it from cache. Read it only after
+  // hydration, so the case tabs and sidebar cases render identically on both sides first.
+  const hydrated = useHydrated();
+  const demoCases = hydrated ? (cases.data ?? []) : [];
   const tree: NavItem[] = [
-    link("queue", t("queue", lang), <IconQueue size={14} />, "/queue"),
-    link("transactions", t("transactions", lang), <IconTransactions size={14} />, "/transactions"),
+    link("queue", t("queue", lang), <IconQueue size={16} />, "/queue"),
+    link("transactions", t("transactions", lang), <IconTransactions size={16} />, "/transactions"),
     {
       id: "cases",
       label: t("cases", lang),
-      icon: <IconCases size={14} />,
+      icon: <IconCases size={16} />,
       children: demoCases.map((c) => ({
         id: c.alert_id,
-        label: `${c.demo_tag ?? "·"} · ${c.alert_id}`,
+        label: c.title,
+        hint: c.alert_id,
         href: `/case/${c.alert_id}`,
         meta: c.demo_tag ?? undefined,
+        status: c.last_route ? ROUTE_TONE[c.last_route] : undefined,
       })),
     },
-    link("audit", t("audit", lang), <IconAudit size={14} />, "/audit"),
-    link("eval", t("eval", lang), <IconEval size={14} />, "/eval"),
-    link("ingest", t("ingest", lang), <IconIngest size={14} />, "/ingest"),
+    link("audit", t("audit", lang), <IconAudit size={16} />, "/audit"),
+    link("eval", t("eval", lang), <IconEval size={16} />, "/eval"),
+    link("ingest", t("ingest", lang), <IconIngest size={16} />, "/ingest"),
   ];
 
   const openIds = [caseId, ...demoCases.slice(0, 3).map((c) => c.alert_id)].filter((id): id is string => !!id && !closed.includes(id));
@@ -95,14 +95,10 @@ export function ConsoleFrame({ children }: { children: ReactNode }) {
       <RecordProvider source={apiRecordSource}>
         <AppShell
           className="h-full"
-          ribbon={ribbon}
           tree={tree}
           activeId={caseId ?? section}
-          ribbonActiveId={section}
-          railExpanded={rail}
-          onToggleRail={() => setRail((v) => !v)}
-          sidebarOpen={sidebar}
-          onToggleSidebar={() => setSidebar((v) => !v)}
+          sidebarOpen={caseId ? sidebarOnCase : sidebar}
+          onToggleSidebar={() => (caseId ? setSidebarOnCase((v) => !v) : setSidebar((v) => !v))}
           onOpenPalette={openPalette}
           tabs={tabs}
           activeTab={activeTab}
@@ -114,7 +110,7 @@ export function ConsoleFrame({ children }: { children: ReactNode }) {
           role={role}
           onRoleChange={setRole}
           banner={h?.demo_mode === "replay" ? (
-            <Banner tone="amber">Replay mode: responses come from the cache. An uncached investigator call fails closed to review.</Banner>
+            <Banner tone="amber" floating>Replay mode: responses come from the cache. An uncached investigator call fails closed to review.</Banner>
           ) : undefined}
         >
           {children}

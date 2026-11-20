@@ -14,7 +14,7 @@ function inline(text: string, key: string): ReactNode[] {
     if (m.index > last) out.push(text.slice(last, m.index));
     const k = `${key}-${i++}`;
     if (m[1]) out.push(m[1]);
-    else if (m[2]) out.push(<code key={k} className="num rounded-[2px] bg-bg px-1 text-xs text-brass">{m[2]}</code>);
+    else if (m[2]) out.push(<code key={k} className="num rounded-xs border border-hairline bg-raised px-1 text-xs text-text">{m[2]}</code>);
     else if (m[3]) out.push(<s key={k} className="text-muted">{m[3]}</s>);
     else if (m[4]) out.push(<em key={k}>{m[4]}</em>);
     else if (m[5]) out.push(<Cites key={k} ids={m[5]} />);
@@ -64,7 +64,7 @@ export function Markdown({ source }: { source: string }) {
                   {r.map((c, ci) => {
                     const Cell = ri === 0 ? "th" : "td";
                     return (
-                      <Cell key={ci} className={`px-3 py-1.5 text-start ${ri === 0 ? "text-2xs uppercase tracking-[0.08em] text-muted" : "text-text"}`}>
+                      <Cell key={ci} className={`px-3 py-1.5 text-start ${ri === 0 ? "text-xs font-medium text-muted" : "text-text"}`}>
                         {inline(c, `${ri}-${ci}`)}
                       </Cell>
                     );
@@ -91,7 +91,7 @@ export function Markdown({ source }: { source: string }) {
       continue;
     }
     if (line.startsWith("## ")) {
-      blocks.push(<h3 key={key()} className="pt-2 text-sm font-medium uppercase tracking-[0.08em] text-muted">{inline(line.slice(3), key())}</h3>);
+      blocks.push(<h3 key={key()} className="pt-3 text-sm font-semibold text-text">{inline(line.slice(3), key())}</h3>);
       i++;
       continue;
     }

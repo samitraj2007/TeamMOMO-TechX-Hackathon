@@ -5,18 +5,19 @@ export type ButtonVariant = "solid" | "outline" | "ghost" | "danger" | "accent" 
 export type ButtonSize = "sm" | "md";
 
 const VARIANT: Record<ButtonVariant, string> = {
-  solid: "border-sage bg-sage text-bg hover:bg-sage/90",
-  accent: "border-brass/80 bg-brass/15 text-brass hover:bg-brass/25",
+  solid: "border-transparent bg-sage text-bg shadow-sheen-strong hover:bg-sage/90",
+  /** Run/act on data. Teal, not amber: amber is reserved for the Needs review status. */
+  accent: "border-sage/55 bg-sage/[0.07] text-sage hover:border-sage hover:bg-sage/[0.13]",
   /** Primary action on the black key: a cream face. Disabled drops to an outline so its label stays legible. */
   key:
-    "border-text bg-text text-surface hover:bg-text/90 " +
+    "border-transparent bg-text text-surface hover:bg-text/90 " +
     "disabled:border-hairline-strong disabled:bg-transparent disabled:text-muted",
-  outline: "border-hairline-strong bg-raised/40 text-text hover:bg-raised hover:border-muted/50",
+  outline: "border-hairline-strong bg-surface text-text hover:border-muted/40 hover:bg-raised",
   ghost: "border-transparent bg-transparent text-muted hover:bg-raised hover:text-text",
-  danger: "border-red/80 bg-red/12 text-red-text hover:bg-red/22",
+  danger: "border-red/40 bg-red/[0.08] text-red-text hover:border-red/70 hover:bg-red/[0.14]",
 };
 
-const SIZE: Record<ButtonSize, string> = { sm: "h-7 gap-1.5 px-2.5 text-xs", md: "h-9 gap-2 px-3.5 text-sm" };
+const SIZE: Record<ButtonSize, string> = { sm: "h-7 gap-1.5 px-3 text-xs", md: "h-9 gap-2 px-4 text-sm" };
 
 export function Button({
   variant = "outline",
@@ -46,7 +47,7 @@ export function Button({
   );
 }
 
-/** Square icon button (3px radius; never a circle). */
+/** Icon button with a rounded hover plate. */
 export function IconButton({
   label,
   className,

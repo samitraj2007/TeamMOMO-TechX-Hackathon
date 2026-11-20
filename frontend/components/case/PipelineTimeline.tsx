@@ -112,13 +112,13 @@ export function PipelineTimeline({
         <Button size="sm" variant="outline" onClick={play} icon={playing ? <IconPause size={12} /> : <IconPlay size={12} />}>
           {playing ? "Pause" : at >= n - 1 ? "Replay steps" : "Play"}
         </Button>
-        <span className="num text-2xs text-muted">step {at + 1} / {n}</span>
+        <span className="num text-xs text-muted">Step {at + 1} of {n}</span>
         {current && <span className="truncate text-xs text-text">{STEP_LABEL[current.step] ?? current.step}</span>}
       </div>
       <ol key={revealKey} ref={list} className="relative">
         {/* The spine: rail, teal progress fill, and the scrub zone. */}
-        <span aria-hidden className="absolute bottom-3 start-[9px] top-3 w-[2px] bg-hairline" />
-        <motion.span aria-hidden className="absolute start-[9px] top-3 w-[2px] origin-top bg-sage"
+        <span aria-hidden className="absolute bottom-3 start-[9px] top-3 w-[2px] rounded-full bg-hairline" />
+        <motion.span aria-hidden className="absolute start-[9px] top-3 w-[2px] origin-top rounded-full bg-sage"
           animate={{ height: Math.max(0, (centers[at] ?? 0) - 12) }} transition={SPRING.soft} />
         <div
           role="slider"
@@ -131,7 +131,7 @@ export function PipelineTimeline({
           onPointerDown={onScrubDown}
           onPointerMove={onScrubMove}
           onKeyDown={onKey}
-          className="absolute inset-y-0 start-0 z-10 w-5 cursor-ns-resize touch-none rounded-control hover:bg-sage/5"
+          className="absolute inset-y-0 start-0 z-10 w-5 cursor-ns-resize touch-none rounded-full hover:bg-sage/5"
         />
         {steps.map((s, i) => {
           // Node shape follows the step status: filled when done, hollow when waiting or skipped, a cross on failure.
@@ -143,7 +143,7 @@ export function PipelineTimeline({
           return (
             <Fragment key={s.audit_id}>
               {showRunHeader(i) && (
-                <li aria-hidden className="mb-1 ms-7 flex items-center gap-2 text-2xs font-medium uppercase tracking-[0.1em] text-muted">
+                <li aria-hidden className="mb-1 ms-7 flex items-center gap-2 text-xs font-medium text-muted">
                   Run <span className="num">{s.run}</span>
                   <span className="h-px flex-1 bg-hairline" />
                 </li>
@@ -163,13 +163,13 @@ export function PipelineTimeline({
                     animate={{ scale: isCurrent ? 1.25 : 1 }}
                     transition={SPRING.ui}
                     className={cx(
-                      "relative z-[1] flex h-[11px] w-[11px] items-center justify-center rounded-[2px] border bg-surface",
+                      "relative z-[1] flex h-3 w-3 items-center justify-center rounded-full border-[1.5px] bg-surface",
                       future ? "border-hairline-strong" : TONE_BORDER[tone],
-                      isCurrent && "ring-2 ring-sage/30 ring-offset-1 ring-offset-surface",
+                      isCurrent && "ring-4 ring-sage/15",
                     )}
                   >
                     {!future && failed && <IconClose size={7} strokeWidth={2.5} className="text-red-text" />}
-                    {!future && !failed && !hollow && <span className={cx("absolute inset-[2px] rounded-[1px]", TONE_BG[tone])} />}
+                    {!future && !failed && !hollow && <span className={cx("absolute inset-[2px] rounded-full", TONE_BG[tone])} />}
                   </motion.span>
                 </span>
                 <div
@@ -178,8 +178,8 @@ export function PipelineTimeline({
                     setCursor(i);
                   }}
                   className={cx(
-                    "flex min-w-0 cursor-pointer flex-col gap-1 rounded-panel border px-3 py-2 text-start transition-colors duration-150",
-                    isCurrent ? "border-sage/35 bg-sage/5" : "border-transparent hover:border-hairline hover:bg-raised",
+                    "flex min-w-0 cursor-pointer flex-col gap-1.5 rounded-panel border px-3 py-2.5 text-start transition-colors duration-150",
+                    isCurrent ? "border-sage/25 bg-sage/[0.05]" : "border-transparent hover:bg-raised",
                   )}
                 >
                   <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
@@ -220,7 +220,7 @@ function ServiceCalls({
 }) {
   const max = Math.max(1, ...calls.map((c) => c.duration_ms));
   return (
-    <span className="flex flex-col gap-0.5 rounded-control border border-hairline/70 bg-bg/40 px-2 py-1">
+    <span className="flex flex-col gap-0.5 rounded-control border border-hairline/70 bg-raised px-2.5 py-1.5">
       {calls.map((c, i) => (
         <motion.span
           key={`${c.name}-${i}`}
@@ -237,8 +237,8 @@ function ServiceCalls({
             {c.target && <span className="num truncate text-2xs text-muted">{c.target}</span>}
             {c.record_ids.length > 0 && renderRecords(c.record_ids)}
           </span>
-          <span aria-hidden className="h-1 overflow-hidden rounded-[1px] bg-hairline">
-            <motion.span className={cx("block h-full rounded-[1px]", c.ok ? "bg-sage" : "bg-red")}
+          <span aria-hidden className="h-1 overflow-hidden rounded-full bg-hairline">
+            <motion.span className={cx("block h-full rounded-full", c.ok ? "bg-sage" : "bg-red")}
               initial={motionOK ? { width: 0 } : false}
               animate={{ width: `${Math.max(4, (c.duration_ms / max) * 100)}%` }}
               transition={{ duration: 0.24, ease: EASE.out, delay: baseDelay + 0.1 }} />

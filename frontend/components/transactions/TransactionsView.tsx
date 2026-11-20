@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
-  Button, DataTable, EmptyState, ErrorState, Input, LoadingState, RouteTag, SegmentedTabs, Select, Tag,
+  Button, DataTable, EmptyState, ErrorState, Input, LoadingState, PageHeader, RouteTag, SegmentedTabs, Select, Tag,
   type Column,
 } from "@/components/primitives";
 import { money, timestamp } from "@/lib/format";
@@ -80,8 +80,8 @@ export function TransactionsView() {
       header: "Alert",
       width: "minmax(180px, 1fr)",
       render: (r) => r.alerted
-        ? <Tag tone="amber" title={r.rule_id ?? undefined}>Alerted by rules {r.rule_id}</Tag>
-        : <Tag tone="muted">Not alerted by rules</Tag>,
+        ? <Tag tone="neutral" title={r.rule_id ?? undefined}><span aria-hidden className="h-1.5 w-1.5 rounded-full bg-amber" />Alerted by rules <span className="num">{r.rule_id}</span></Tag>
+        : <span className="text-xs text-muted">Not alerted by rules</span>,
     },
     { key: "route", header: "Route", width: "148px", render: (r) => <RouteTag route={r.last_route} /> },
     {
@@ -92,7 +92,8 @@ export function TransactionsView() {
       render: (r) => (
         <Button
           size="sm"
-          variant="accent"
+          variant="ghost"
+          className="border-hairline-strong text-text hover:border-sage/60 hover:text-sage"
           disabled={busy !== null}
           onClick={(e) => {
             e.stopPropagation();
@@ -106,8 +107,9 @@ export function TransactionsView() {
   ];
 
   return (
-    <div className="flex flex-col gap-4 p-5">
-      <div className="flex flex-wrap items-end gap-3">
+    <div className="route-in flex flex-col gap-5 px-2 pb-8 pt-1">
+      <PageHeader title="Transactions" description="Every synthetic transaction, alerted or not. Run one to open it as a case." />
+      <div className="flex flex-wrap items-center gap-3">
         <SegmentedTabs
           label="Alerted by rules"
           size="sm"
@@ -119,7 +121,7 @@ export function TransactionsView() {
             { value: "no", label: "Not alerted", count: counts.no },
           ]}
         />
-        <Select aria-label="Currency" value={currency} onChange={(e) => setCurrency(e.target.value)} className="w-28">
+        <Select aria-label="Currency" value={currency} onChange={(e) => setCurrency(e.target.value)} className="w-36">
           <option value="all">All currencies</option>
           {currencies.map((c) => <option key={c} value={c}>{c}</option>)}
         </Select>
