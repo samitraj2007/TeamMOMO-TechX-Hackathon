@@ -2,11 +2,11 @@
 
 import { motion } from "motion/react";
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
-import { IconPause, IconPlay } from "@/components/icons";
+import { IconClose, IconPause, IconPlay } from "@/components/icons";
 import { ActorTag, Button, StatusTag, Timestamp } from "@/components/primitives";
 import { cx } from "@/lib/cx";
 import { duration } from "@/lib/format";
-import { ACTOR_TONE, CALL_LABEL, STEP_LABEL, TONE_BG, TONE_BORDER } from "@/lib/labels";
+import { CALL_LABEL, STATUS_TONE, STEP_LABEL, TONE_BG, TONE_BORDER } from "@/lib/labels";
 import { DUR, EASE, SPRING, STAGGER, useMotionOK } from "@/lib/motion";
 import { usePrefs } from "@/lib/prefs";
 import type { TimelineCall, TimelineStep } from "@/lib/types";
@@ -116,9 +116,9 @@ export function PipelineTimeline({
         {current && <span className="truncate text-xs text-text">{STEP_LABEL[current.step] ?? current.step}</span>}
       </div>
       <ol key={revealKey} ref={list} className="relative">
-        {/* Rail, progress fill, and the scrub zone. */}
-        <span aria-hidden className="absolute bottom-3 start-[9px] top-3 w-px bg-hairline-strong" />
-        <motion.span aria-hidden className="absolute start-[9px] top-3 w-px origin-top bg-linear-to-b from-sage/40 via-sage to-brass"
+        {/* The spine: rail, teal progress fill, and the scrub zone. */}
+        <span aria-hidden className="absolute bottom-3 start-[9px] top-3 w-[2px] bg-hairline" />
+        <motion.span aria-hidden className="absolute start-[9px] top-3 w-[2px] origin-top bg-sage"
           animate={{ height: Math.max(0, (centers[at] ?? 0) - 12) }} transition={SPRING.soft} />
         <div
           role="slider"
@@ -131,10 +131,13 @@ export function PipelineTimeline({
           onPointerDown={onScrubDown}
           onPointerMove={onScrubMove}
           onKeyDown={onKey}
-          className="absolute inset-y-0 start-0 z-10 w-5 cursor-ns-resize touch-none rounded-control hover:bg-brass/5"
+          className="absolute inset-y-0 start-0 z-10 w-5 cursor-ns-resize touch-none rounded-control hover:bg-sage/5"
         />
         {steps.map((s, i) => {
-          const tone = ACTOR_TONE[s.actor_type];
+          // Node shape follows the step status: filled when done, hollow when waiting or skipped, a cross on failure.
+          const tone = STATUS_TONE[s.status] ?? "muted";
+          const failed = tone === "red";
+          const hollow = tone === "muted" || tone === "human";
           const future = i > at;
           const isCurrent = i === at;
           return (
@@ -152,7 +155,6 @@ export function PipelineTimeline({
                 className="relative grid grid-cols-[20px_1fr] gap-x-3 pb-3 last:pb-0"
               >
                 <span className="relative flex justify-center pt-2">
-                  {isCurrent && <span aria-hidden className="glow-brass absolute -inset-2 top-0 h-8" />}
                   <motion.span
                     ref={(el) => {
                       nodes.current[i] = el;
@@ -160,9 +162,14 @@ export function PipelineTimeline({
                     aria-hidden
                     animate={{ scale: isCurrent ? 1.25 : 1 }}
                     transition={SPRING.ui}
-                    className={cx("relative z-[1] h-[11px] w-[11px] rounded-[3px] border bg-bg", isCurrent ? "border-brass" : TONE_BORDER[tone])}
+                    className={cx(
+                      "relative z-[1] flex h-[11px] w-[11px] items-center justify-center rounded-[2px] border bg-surface",
+                      future ? "border-hairline-strong" : TONE_BORDER[tone],
+                      isCurrent && "ring-2 ring-sage/30 ring-offset-1 ring-offset-surface",
+                    )}
                   >
-                    <span className={cx("absolute inset-[2px] rounded-[1px]", future ? "bg-hairline-strong" : TONE_BG[tone])} />
+                    {!future && failed && <IconClose size={7} strokeWidth={2.5} className="text-red-text" />}
+                    {!future && !failed && !hollow && <span className={cx("absolute inset-[2px] rounded-[1px]", TONE_BG[tone])} />}
                   </motion.span>
                 </span>
                 <div
@@ -172,7 +179,7 @@ export function PipelineTimeline({
                   }}
                   className={cx(
                     "flex min-w-0 cursor-pointer flex-col gap-1 rounded-panel border px-3 py-2 text-start transition-colors duration-150",
-                    isCurrent ? "sheet border-brass/40 bg-raised" : "border-transparent hover:border-hairline hover:bg-surface/60",
+                    isCurrent ? "border-sage/35 bg-sage/5" : "border-transparent hover:border-hairline hover:bg-raised",
                   )}
                 >
                   <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">

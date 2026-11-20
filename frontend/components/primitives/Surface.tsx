@@ -20,7 +20,7 @@ export function PanelHeader({
   return (
     <header className={cx("flex min-h-10 shrink-0 items-center gap-2 border-b border-hairline/80 px-4", className)}>
       {eyebrow}
-      <h2 className="truncate text-2xs font-medium uppercase tracking-[0.1em] text-muted">{title}</h2>
+      <h2 className="truncate font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-muted">{title}</h2>
       {actions && <div className="ms-auto flex items-center gap-1">{actions}</div>}
     </header>
   );

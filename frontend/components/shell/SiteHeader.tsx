@@ -4,7 +4,7 @@ import { motion } from "motion/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSyncExternalStore } from "react";
-import { Mascot } from "@/components/brand/Mascot";
+import { MomoLockup } from "@/components/brand/MomoLockup";
 import { IconSearch } from "@/components/icons";
 import { SegmentedTabs } from "@/components/primitives";
 import { cx } from "@/lib/cx";
@@ -90,21 +90,16 @@ export function SiteHeader({ onOpenPalette }: { onOpenPalette: () => void }) {
       className={cx(
         "sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b px-3",
         quiet
-          ? "palette-charcoal border-hairline bg-surface"
+          ? "palette-charcoal border-hairline bg-bg"
           : cx("border-hairline", scrolled ? "bg-bg/75 backdrop-blur-md" : "bg-bg"),
       )}
     >
-      <Link href="/" className="flex shrink-0 items-center gap-2 pe-1">
-        {quiet ? (
-          <img src="/brand/momo-body.png" alt="" className="h-7 w-auto" />
-        ) : (
-          <Mascot state="idle" size={28} avatar />
-        )}
-        <span className="text-sm font-medium tracking-tight text-text">GulfHorizon</span>
-        {!quiet && <span className="num hidden text-2xs text-muted xl:inline">Triage Console</span>}
+      <Link href="/" aria-label="MOMO Sentinel home" className="flex shrink-0 items-center gap-3 pe-2">
+        <MomoLockup size={30} />
+        {!quiet && <span className="hidden border-s border-hairline ps-3 font-mono text-[10px] uppercase tracking-[0.14em] text-muted xl:inline">Triage console</span>}
       </Link>
 
-      <nav aria-label="Sections" className={cx("flex h-full shrink-0 items-stretch", quiet && "ms-auto")}>
+      <nav aria-label="Sections" className={cx("h-full shrink-0 items-stretch", quiet ? "ms-auto hidden md:flex" : "flex")}>
         {NAV.map((item) => {
           const active = path === item.href || path.startsWith(`${item.href}/`);
           return (
@@ -138,6 +133,12 @@ export function SiteHeader({ onOpenPalette }: { onOpenPalette: () => void }) {
           );
         })}
       </nav>
+
+      {quiet && (
+        <Link href="/queue" className="ms-auto inline-flex h-8 items-center rounded-md border border-hairline-strong px-3 text-sm text-text hover:border-sage hover:text-sage md:hidden">
+          Console
+        </Link>
+      )}
 
       {quiet && (
         <span className="flex shrink-0 items-center gap-2 pe-1">

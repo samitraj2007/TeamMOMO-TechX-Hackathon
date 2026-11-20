@@ -3,12 +3,12 @@
 import { AnimatePresence, motion } from "motion/react";
 import type { ReactNode } from "react";
 import { IconLock, IconUnlock } from "@/components/icons";
-import { GlowBehind } from "@/components/primitives";
 import { cx } from "@/lib/cx";
 import { DUR, EASE, SPRING, useMotionOK } from "@/lib/motion";
 
 /**
- * Approval gate indicator. Locked until the caller's conditions hold; on unlock it pulses once (400 ms).
+ * Approval gate indicator, drawn on the black key surface reserved for human approval and filing controls.
+ * Locked until the caller's conditions hold; on unlock it pulses once (400 ms).
  * The real gate is enforced by the backend; this only shows its state.
  */
 export function GateLock({
@@ -26,10 +26,9 @@ export function GateLock({
 }) {
   const motionOK = useMotionOK();
   return (
-    <div className={cx("relative isolate", className)}>
-      {unlocked && <GlowBehind tone="sage" />}
-      <div className={cx("sheet relative flex flex-col gap-3 rounded-panel border p-4 transition-colors duration-200",
-        unlocked ? "border-sage/60 bg-sage/8" : "border-hairline bg-surface")}>
+    <div className={cx("surface-key relative isolate rounded-panel", className)}>
+      <div className={cx("relative flex flex-col gap-3 rounded-panel border p-4 transition-colors duration-200",
+        unlocked ? "border-sage/50 bg-sage/8" : "border-hairline bg-surface")}>
         <div className="flex items-center gap-3">
           <span className={cx("relative flex h-9 w-9 items-center justify-center rounded-control border",
             unlocked ? "border-sage/70 bg-sage/15 text-sage" : "border-hairline-strong bg-raised text-muted")}>

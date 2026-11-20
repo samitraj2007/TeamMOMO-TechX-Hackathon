@@ -1,13 +1,17 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cx } from "@/lib/cx";
 
-export type ButtonVariant = "solid" | "outline" | "ghost" | "danger" | "accent";
+export type ButtonVariant = "solid" | "outline" | "ghost" | "danger" | "accent" | "key";
 export type ButtonSize = "sm" | "md";
 
 const VARIANT: Record<ButtonVariant, string> = {
-  solid: "border-sage bg-sage text-bg hover:bg-[#186640] hover:border-[#186640]",
+  solid: "border-sage bg-sage text-bg hover:bg-sage/90",
   accent: "border-brass/80 bg-brass/15 text-brass hover:bg-brass/25",
-  outline: "border-hairline-strong bg-raised/40 text-text hover:bg-raised hover:border-[#C5C8C2]",
+  /** Primary action on the black key: a cream face. Disabled drops to an outline so its label stays legible. */
+  key:
+    "border-text bg-text text-surface hover:bg-text/90 " +
+    "disabled:border-hairline-strong disabled:bg-transparent disabled:text-muted",
+  outline: "border-hairline-strong bg-raised/40 text-text hover:bg-raised hover:border-muted/50",
   ghost: "border-transparent bg-transparent text-muted hover:bg-raised hover:text-text",
   danger: "border-red/80 bg-red/12 text-red-text hover:bg-red/22",
 };
@@ -28,7 +32,8 @@ export function Button({
       type={type}
       className={cx(
         "press inline-flex shrink-0 items-center justify-center rounded-control border font-medium shadow-sheen",
-        "disabled:cursor-not-allowed disabled:opacity-40",
+        "disabled:cursor-not-allowed",
+        variant !== "key" && "disabled:opacity-40",
         VARIANT[variant],
         SIZE[size],
         className,

@@ -3,7 +3,7 @@ import { cx } from "@/lib/cx";
 
 const CONTROL =
   "w-full rounded-control border border-hairline-strong bg-bg/80 px-2.5 text-sm text-text placeholder:text-muted shadow-sheen " +
-  "outline-none transition-colors duration-[120ms] hover:border-[#405647] focus:border-brass/80 focus:bg-bg disabled:opacity-40 " +
+  "outline-none transition-colors duration-[120ms] hover:border-muted/60 focus:border-sage focus:bg-bg disabled:opacity-40 " +
   "aria-[invalid=true]:border-red";
 
 export function Field({

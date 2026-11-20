@@ -15,6 +15,14 @@ export const jetbrainsMono = localFont({
   display: "swap",
 });
 
+/** Display blackletter for the landing wordmark (Fiolex Mephisto, freeware). */
+export const mephisto = localFont({
+  src: "../app/fonts/Mephisto-Regular.ttf",
+  variable: "--font-mephisto",
+  weight: "400",
+  display: "swap",
+});
+
 export const plexArabic = localFont({
   src: [
     { path: "../app/fonts/IBMPlexSansArabic-400-arabic.woff2", weight: "400", style: "normal" },

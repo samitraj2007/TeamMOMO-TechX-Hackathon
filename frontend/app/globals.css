@@ -1,51 +1,55 @@
 @import "tailwindcss";
 
-/* Warm paper surfaces. Green is the accent, not the background. Keep in sync with lib/tokens.ts. */
+/* Spine & Key: warm paper, ink text, one teal accent taken from the mascot's shield.
+   `sage` and `brass` keep their names (used across components) but now carry teal and amber.
+   Keep in sync with lib/tokens.ts. */
 @theme {
-  --color-bg: #f3f4f1;
+  --color-bg: #f4f3ef;
   --color-surface: #ffffff;
-  --color-raised: #f7f8f6;
+  --color-raised: #f8f7f4;
   --color-overlay: #ffffff;
-  --color-hairline: #e4e6e1;
-  --color-hairline-strong: #d5d8d2;
-  --color-text: #1c211e;
-  --color-muted: #5c6560;
-  --color-sage: #1f7a4d;
-  --color-amber: #7a5b24;
-  --color-brass: #7a5b24;
-  --color-red: #b5524a;
-  --color-red-text: #9c3b34;
-  --color-model: #3d5f7a;
-  --color-human: #7a6230;
-  --color-teal: #1f4a44;
+  --color-hairline: #e3e1da;
+  --color-hairline-strong: #cfccc3;
+  --color-text: #151514;
+  --color-muted: #5e5b54;
+  --color-sage: #1f5f5c;
+  --color-amber: #8a5a12;
+  --color-brass: #8a5a12;
+  --color-red: #b5463a;
+  --color-red-text: #a3352b;
+  --color-model: #4a5b6e;
+  --color-human: #7a5a1e;
+  --color-teal: #1f5f5c;
 
   /* Phase-0 aliases, kept so older class names follow the paper palette. */
-  --color-ink: #1c211e;
+  --color-ink: #151514;
   --color-panel: #ffffff;
-  --color-panel-2: #f7f8f6;
-  --color-line: #e4e6e1;
-  --color-fg: #1c211e;
-  --color-faint: #5c6560;
-  --color-clear: #1f7a4d;
-  --color-review: #7a5b24;
-  --color-approve: #b5524a;
-  --color-llm: #3d5f7a;
+  --color-panel-2: #f8f7f4;
+  --color-line: #e3e1da;
+  --color-fg: #151514;
+  --color-faint: #5e5b54;
+  --color-clear: #1f5f5c;
+  --color-review: #8a5a12;
+  --color-approve: #b5463a;
+  --color-llm: #4a5b6e;
 
   --radius-xs: 2px;
   --radius-sm: 3px;
   --radius-md: 3px;
-  --radius-lg: 6px;
-  --radius-xl: 6px;
-  --radius-2xl: 6px;
-  --radius-3xl: 6px;
-  --radius-4xl: 6px;
-  --radius-control: 3px;
-  --radius-panel: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 8px;
+  --radius-2xl: 8px;
+  --radius-3xl: 8px;
+  --radius-4xl: 8px;
+  --radius-control: 4px;
+  --radius-panel: 8px;
   --radius-search: 12px;
 
   --shadow-*: initial;
   --shadow-sheen: inset 0 1px 0 0 rgb(255 255 255 / 0.9);
   --shadow-sheen-strong: inset 0 1px 0 0 rgb(255 255 255 / 1);
+  /* The only drop shadow in the system, reserved for the black key. */
+  --shadow-key: 0 18px 40px -18px rgb(0 0 0 / 0.45);
   --inset-shadow-*: initial;
   --drop-shadow-*: initial;
 
@@ -77,6 +81,10 @@
   --font-arabic: var(--font-plex-arabic), var(--font-geist), system-ui, sans-serif;
 }
 
+.font-mephisto {
+  font-family: var(--font-mephisto), var(--font-geist), serif;
+}
+
 html {
   background: var(--color-bg);
   color: var(--color-text);
@@ -96,8 +104,8 @@ body {
   background-color: var(--color-bg);
   background-image:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.11 0 0 0 0 0.13 0 0 0 0 0.11 0 0 0 0.045 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E"),
-    radial-gradient(1000px 560px at 0% -10%, rgb(28 33 30 / 0.045), transparent 62%),
-    radial-gradient(720px 420px at 100% 0%, rgb(31 122 77 / 0.05), transparent 58%);
+    radial-gradient(1000px 560px at 0% -10%, rgb(21 21 20 / 0.04), transparent 62%),
+    radial-gradient(720px 420px at 100% 0%, rgb(31 95 92 / 0.05), transparent 58%);
   background-attachment: fixed;
   animation: backdrop-drift 48s linear infinite;
 }
@@ -141,9 +149,9 @@ body {
   line-height: 1.7;
 }
 
-/* Brass focus ring: the single warm accent marks focus. */
+/* Teal focus ring on paper; cream inside the black key (see .surface-key). */
 :focus-visible {
-  outline: 2px solid rgb(207 166 90 / 0.85);
+  outline: 2px solid var(--color-sage);
   outline-offset: 2px;
   border-radius: 3px;
 }
@@ -161,7 +169,7 @@ body {
 }
 
 ::selection {
-  background: rgb(207 166 90 / 0.3);
+  background: rgb(31 95 92 / 0.2);
   color: var(--color-text);
 }
 
@@ -248,6 +256,9 @@ body {
   --color-text: #ece8df;
   --color-muted: #8c8a82;
   --color-brass: #b8975a;
+  /* Shield teal, lifted for dark ground (~7.8:1 on bg). */
+  --color-sage: #6fb3b0;
+  --color-teal: #6fb3b0;
   --color-ink: #ece8df;
   --color-fg: #ece8df;
   --color-faint: #8c8a82;
@@ -281,6 +292,68 @@ body {
 
 .palette-charcoal .hero-press:active:not(:disabled) {
   transform: scale(0.98);
+}
+
+/* The black key: the ink surface that holds human approval and filing controls.
+   It re-points the colour tokens, so primitives inside (fields, buttons, refusals) restyle themselves.
+   It is a presentation of controls; the backend enforces the gate. */
+.surface-key {
+  --color-bg: #1d1c1a;
+  --color-surface: #131312;
+  --color-raised: #24231f;
+  --color-overlay: #1d1c1a;
+  --color-hairline: #302e2a;
+  --color-hairline-strong: #4a4740;
+  --color-text: #eeeae2;
+  --color-muted: #aaa69c;
+  --color-sage: #7cc0bc;
+  --color-amber: #e3b866;
+  --color-brass: #e3b866;
+  --color-red: #d36a5f;
+  --color-red-text: #f29a90;
+  --color-model: #a4b7cb;
+  --color-human: #d9bc80;
+  --shadow-sheen: inset 0 1px 0 0 rgb(255 255 255 / 0.06);
+  color-scheme: dark;
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-key);
+}
+
+/* The paper sheet highlight is a white fade; on the key it would wash out headers. */
+.surface-key .sheet {
+  background-image: none;
+}
+
+/* Disabled controls on the key stay legible (40% on near-black falls to ~2.3:1; 60% keeps ~3.7:1). */
+.surface-key button:disabled {
+  opacity: 0.6;
+}
+
+.surface-key :focus-visible {
+  outline-color: #eeeae2;
+}
+
+.surface-key ::selection {
+  background: rgb(238 234 226 / 0.25);
+}
+
+/* Landing entrance: CSS, so content is visible even when scripts do not run.
+   Reduced motion collapses it to the final state via the rule below. */
+@keyframes momo-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rise {
+  animation: momo-rise 760ms cubic-bezier(0.2, 0, 0, 1) both;
+  animation-delay: var(--rise-delay, 0ms);
 }
 
 @media (prefers-reduced-motion: reduce) {

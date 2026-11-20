@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, Suspense, useContext, useMemo, useState, type ReactNode } from "react";
 import { CommandPalette, useCommandHotkey, type Command } from "@/components/shell/CommandPalette";
 import { SiteHeader } from "@/components/shell/SiteHeader";
 import { useCases } from "@/lib/queries";
@@ -38,7 +38,10 @@ export function SiteFrame({ children }: { children: ReactNode }) {
 
   return (
     <PaletteCtx.Provider value={open}>
-      <SiteHeader onOpenPalette={open} />
+      {/* SiteHeader reads the pathname, which is runtime-only on dynamic routes; Suspense lets those routes prerender. */}
+      <Suspense fallback={<div className="h-14 shrink-0 border-b border-hairline" />}>
+        <SiteHeader onOpenPalette={open} />
+      </Suspense>
       {children}
       <CommandPalette
         open={palette}

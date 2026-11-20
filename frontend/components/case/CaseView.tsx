@@ -91,22 +91,23 @@ function CaseBody({
   const rawCount = run ? rawTextInInvestigator(run, detail.raw_fields) : null;
 
   return (
-    <div className="flex flex-col gap-4">
-      <header className="flex flex-wrap items-end gap-x-6 gap-y-3">
-        <div className="flex min-w-0 flex-col gap-1">
-          <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-5">
+      <header className="flex flex-wrap items-end gap-x-6 gap-y-4 border-b border-hairline pb-5">
+        <div className="flex min-w-0 flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em] text-muted">
             {s.demo_tag && <Tag tone="amber" variant="tint">{s.demo_tag}</Tag>}
-            <span className="num text-sm text-text">{s.alert_id}</span>
-            <span className="text-xs text-muted">{s.rule_id}</span>
+            <span className="num text-text">{s.alert_id}</span>
+            <span aria-hidden>·</span>
+            <span>{s.rule_id}</span>
           </div>
-          <h1 className="text-lg font-medium text-text">{s.title}</h1>
+          <h1 className="text-[28px] font-semibold leading-8 tracking-[-0.03em] text-text">{s.title}</h1>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
-            <Amount value={s.amount} currency={s.currency} />
+            <Amount value={s.amount} currency={s.currency} className="font-medium text-text" />
             <span>{s.payee_name ?? "No payee name"}</span>
             <Timestamp iso={detail.ts} />
           </div>
         </div>
-        <div className="ms-auto flex items-center gap-2">
+        <div className="ms-auto flex flex-wrap items-center gap-2">
           <RouteTag route={run?.decision.route ?? s.last_route} size="lg" />
           <Button variant="solid" disabled={runMut.isPending} onClick={() => runMut.mutate(undefined, { onSuccess: onRan })}>
             {runMut.isPending ? "Running…" : run ? "Run again" : "Run investigation"}
@@ -120,8 +121,8 @@ function CaseBody({
         </Callout>
       )}
 
-      <div className="grid items-start gap-4 xl:grid-cols-[minmax(280px,340px)_minmax(0,1fr)_320px]">
-        <Panel title="Pipeline" tint="bg" className="xl:sticky xl:top-0">
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(280px,340px)_minmax(0,1fr)_320px]">
+        <Panel title="Pipeline" tint="surface" className="xl:sticky xl:top-0">
           {timeline.isPending ? <LoadingState label="Loading the audit timeline" lines={4} />
             : timeline.isError ? <ErrorState error={timeline.error} onRetry={() => void timeline.refetch()} />
             : timeline.data.steps.length === 0 ? <EmptyState title="No audit steps yet" body="Run the investigation to write the first steps." />
@@ -129,7 +130,7 @@ function CaseBody({
         </Panel>
 
         <div className="flex min-w-0 flex-col gap-3">
-          <SegmentedTabs label="Case view" value={tab} onChange={setTab} options={[
+          <SegmentedTabs variant="underline" label="Case view" value={tab} onChange={setTab} options={[
             { value: "quarantine", label: "Quarantine", count: run?.quarantine.spans.length },
             { value: "evidence", label: "Evidence", count: run?.evidence.record_ids.length },
             { value: "report", label: "Report" },
@@ -157,7 +158,7 @@ function Quarantine({ detail, rawCount }: { detail: CaseDetail; rawCount: number
     <div className="flex flex-col gap-3">
       <Airlock memo={memo} spans={memoSpans} facts={run.quarantine.memo_facts} rawReceived={rawCount} />
       {other.length > 0 && <OtherSpans raw={detail.raw_fields} spans={other} />}
-      <Panel title="Classifier" tint="bg">
+      <Panel title="Classifier" tint="surface">
         <div className="flex flex-wrap items-center gap-2 pb-2">
           <Tag tone={run.quarantine.classifier_verdict === "BENIGN" ? "sage" : run.quarantine.classifier_verdict === "INJECTION" ? "red" : "amber"}>
             {run.quarantine.classifier_verdict}
@@ -182,7 +183,7 @@ function Quarantine({ detail, rawCount }: { detail: CaseDetail; rawCount: number
 function OtherSpans({ raw, spans }: { raw: Record<string, string | null>; spans: Span[] }) {
   const fields = [...new Set(spans.map((s) => s.field))];
   return (
-    <Panel title="Other flagged fields" tint="bg">
+    <Panel title="Other flagged fields" tint="surface">
       {fields.map((field) => {
         const text = raw[field] ?? "";
         const mine = spans.filter((s) => s.field === field);
@@ -217,7 +218,7 @@ function Evidence({ run }: { run: CaseRun | null }) {
   return (
     <div className="flex flex-col gap-3">
       {!ev.complete && <Callout kind="warn">Evidence is incomplete. The case fails closed to review.</Callout>}
-      <Panel title="Bank records" tint="bg" padded={false}>
+      <Panel title="Bank records" tint="surface" padded={false}>
         <PropertiesTable rows={[
           { key: "customer", value: ev.kyc ? <span>{ev.kyc.customer.record_id} · {ev.kyc.customer.segment}</span> : "unavailable" },
           { key: "device", value: ev.kyc?.txn_device ? <span className={ev.kyc.device_known_and_verified ? "text-sage" : "text-red-text"}>{ev.kyc.txn_device.record_id} · {ev.kyc.device_known_and_verified ? "verified" : "unverified"}</span> : "unavailable" },
@@ -227,7 +228,7 @@ function Evidence({ run }: { run: CaseRun | null }) {
         ]} />
       </Panel>
       {matches.length > 0 && (
-        <Panel title="Watchlist matches" tint="bg">
+        <Panel title="Watchlist matches" tint="surface">
           <ul className="flex flex-col gap-2">
             {matches.map((m) => (
               <li key={m.watchlist_id + m.screened_name} className="flex flex-wrap items-center gap-2 text-sm">
@@ -240,7 +241,7 @@ function Evidence({ run }: { run: CaseRun | null }) {
           </ul>
         </Panel>
       )}
-      <Panel title="Investigator" tint="bg">
+      <Panel title="Investigator" tint="surface">
         <div className="mb-2 flex items-center gap-2">
           <ActorTag actor="LLM" />
           <StatusTag status={run.investigator.status} />
@@ -270,7 +271,7 @@ function ReportPane({ report, hasRun }: { report: ReturnType<typeof useReport>; 
   }
   const r = report.data;
   return (
-    <Panel title="Suspicious activity report" tint="bg" eyebrow={<Tag tone={r.verifier_passed ? "sage" : "amber"}>{r.verifier_passed ? "verifier passed" : "verifier failed"}</Tag>}>
+    <Panel title="Suspicious activity report" tint="surface" eyebrow={<Tag tone={r.verifier_passed ? "sage" : "amber"}>{r.verifier_passed ? "verifier passed" : "verifier failed"}</Tag>}>
       <p className="mb-3 text-xs text-muted">
         <span className="num">{r.template_version}</span> · {r.accepted} accepted · {r.rejected} rejected
         {r.llm_rejected > 0 && <span className="text-red-text"> · {r.llm_rejected} model sentences rejected</span>}
@@ -307,7 +308,7 @@ function DecisionRail({ id, detail }: { id: string; detail: CaseDetail }) {
 
   return (
     <div className="flex flex-col gap-3 xl:sticky xl:top-0">
-      <Panel title="Decision" tint="raised" stacked>
+      <Panel title="Decision" tint="surface">
         {!run ? <EmptyState mascot={false} title="Waiting for a run" body="Policy decides only after the pipeline runs." /> : (
           <div className="flex flex-col gap-3">
             <RouteTag route={run.decision.route} size="lg" />
@@ -342,7 +343,7 @@ function DecisionRail({ id, detail }: { id: string; detail: CaseDetail }) {
                 <TextArea id={`reason-${id}`} value={reason} onChange={(e) => setReason(e.target.value)} />
               </Field>
               <div className="flex gap-2">
-                <Button variant="accent" disabled={decide.isPending || reason.trim().length < 3}
+                <Button variant="key" disabled={decide.isPending || reason.trim().length < 3}
                   onClick={() => void onDecide("APPROVE", run.decision.route === "PENDING_APPROVAL" ? "HOLD_AND_BLOCK" : "CLEAR")}>
                   Approve
                 </Button>
@@ -360,10 +361,10 @@ function DecisionRail({ id, detail }: { id: string; detail: CaseDetail }) {
         <Callout kind="note" title="Auto-cleared">Code committed this case. No officer action is required.</Callout>
       )}
 
-      <Panel title="Filing" tint="bg">
+      <Panel title="Filing" tint="surface" className="surface-key rounded-panel">
         {!run ? <span className="text-sm text-muted">Filing opens after a run.</span> : (
           <div className="flex flex-col gap-2">
-            <Button size="sm" variant="outline" disabled={file.isPending} onClick={() => {
+            <Button size="sm" variant="key" disabled={file.isPending} onClick={() => {
               setRefusal(null);
               void file.mutateAsync({ actor: actorFor(role), role }).then((f) => setFiling({ id: f.filing_id, hash: f.report_sha256 })).catch(() => undefined);
             }}>

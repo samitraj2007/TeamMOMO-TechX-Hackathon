@@ -1,0 +1,3 @@
+Fiolex Mephisto v1.0 (c) 2008 Fiolex Software — www.fiolex.com
+Freeware for personal and commercial use. Freely copied and redistributed as-is.
+See Fiolex_Mephisto.txt in the DaFont archive. Sublicensing and resale not allowed without prior agreement.
