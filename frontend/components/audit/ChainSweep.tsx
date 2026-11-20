@@ -6,7 +6,7 @@ import { IconCheck, IconHash } from "@/components/icons";
 import { SuccessButton } from "@/components/primitives";
 import { cx } from "@/lib/cx";
 import { shortHash } from "@/lib/format";
-import { SPRING, useMotionOK } from "@/lib/motion";
+import { EASE, useMotionOK } from "@/lib/motion";
 
 export interface ChainLink {
   record_id: string;
@@ -73,7 +73,8 @@ export function ChainSweep({ links, onVerify, className }: { links: ChainLink[];
               <motion.span
                 title={`${l.record_id} · ${l.hash}`}
                 animate={lit && motionOK ? { scale: [1, 1.08, 1] } : { scale: 1 }}
-                transition={SPRING.ui}
+                // A tween, not a spring: Motion springs accept only two keyframes and throw on this three-step pulse.
+                transition={motionOK ? { duration: 0.28, ease: EASE.out } : { duration: 0 }}
                 className={cx(
                   "num flex h-7 items-center gap-1 rounded-control border px-1.5 text-2xs transition-colors duration-150",
                   bad ? "border-red bg-red/15 text-red-text" : lit ? "border-sage/60 bg-sage/10 text-text" : "border-hairline bg-bg/60 text-muted",

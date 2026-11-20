@@ -40,8 +40,8 @@ export function EvalView() {
       {evalQuery.isError && <ErrorState error={evalQuery.error} onRetry={() => void evalQuery.refetch()} />}
       {card === null && (
         <EmptyState
-          title="Needs GET /eval"
-          body="There is no eval endpoint yet. When it exists, the scorecard will render here."
+          title="This backend has no GET /eval"
+          body="The running backend is older than this frontend. Restart it from the current branch and the scorecard renders here."
         />
       )}
       {card && (

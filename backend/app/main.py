@@ -23,7 +23,7 @@ from backend.app.reports.builder import Report, build_report
 from backend.app.schemas import Action, Approval, Resolution, Route
 from backend.app.security.classifier import Guard, build_guard
 from backend.app.services.case_resolution import (AlreadyResolved, ApprovalRequired, commit_case_resolution,
-                                                  gated_facts, is_override, latest_approval, latest_resolution,
+                                                  approvals_for, gated_facts, is_override, latest_approval, latest_resolution,
                                                   proposed_action, record_approval)
 from backend.app.services.filing import AlreadyFiled, FilingRefused, file_report
 from backend.app.services.kyc_devices import RecordNotFound
@@ -105,7 +105,8 @@ class CaseDetail(BaseModel):
     ts: str | None
     raw_fields: dict[str, str | None] = Field(description="Display only. Never sent to any agent prompt.")
     run: CaseRun | None
-    approval: Approval | None
+    approval: Approval | None = Field(description="The latest human decision")
+    decisions: list[Approval] = Field(default_factory=list, description="Every human decision, oldest first")
     resolution: Resolution | None
 
 
@@ -176,7 +177,8 @@ def get_case(alert_id: str, conn=Depends(get_conn)):
                        (alert_id,)).fetchone()
     return CaseDetail(summary=_summary(alert, txn), channel=txn["channel"], country=txn["country"], ts=txn["ts"],
                       raw_fields=free_text_fields(conn, txn), run=_runs.get(alert_id),
-                      approval=latest_approval(conn, alert_id), resolution=Resolution(**dict(res)) if res else None)
+                      approval=latest_approval(conn, alert_id), decisions=approvals_for(conn, alert_id),
+                      resolution=Resolution(**dict(res)) if res else None)
 
 
 @app.post("/cases/{alert_id}/run", response_model=CaseRun)
@@ -382,7 +384,7 @@ def get_report(alert_id: str, conn=Depends(get_conn)):
     res = conn.execute("SELECT * FROM resolutions WHERE alert_id = ? ORDER BY record_id DESC LIMIT 1",
                        (alert_id,)).fetchone()
     return build_report(conn, run_result, latest_approval(conn, alert_id), Resolution(**dict(res)) if res else None,
-                        audit.latest_for(conn, alert_id))
+                        audit.latest_for(conn, alert_id), approvals_for(conn, alert_id))
 
 
 class FileReportIn(BaseModel):
@@ -409,7 +411,8 @@ def file_case_report(alert_id: str, body: FileReportIn, conn=Depends(get_conn)):
         raise HTTPException(409, "Run the case before filing its report")
     with _db_lock:
         res = latest_resolution(conn, alert_id)
-        report = build_report(conn, run_result, latest_approval(conn, alert_id), res, audit.latest_for(conn, alert_id))
+        report = build_report(conn, run_result, latest_approval(conn, alert_id), res, audit.latest_for(conn, alert_id),
+                              approvals_for(conn, alert_id))
         try:
             entry = file_report(conn, alert_id, report, body.actor, body.role)
         except FilingRefused as e:

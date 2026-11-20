@@ -8,7 +8,7 @@ import json
 import re
 import sqlite3
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel
 
@@ -78,19 +78,24 @@ def _reason_records(code: str, run: "CaseRun", alert_id: str, txn_id: str) -> li
 
 
 def build_report(conn: sqlite3.Connection, run: "CaseRun", approval: Approval | None = None,
-                 resolution: Resolution | None = None, audit_ref: AuditEntry | None = None) -> Report:
+                 resolution: Resolution | None = None, audit_ref: AuditEntry | None = None,
+                 decisions: list[Approval] | None = None) -> Report:
+    """`decisions` is every human decision on the case, oldest first; without it only `approval` is reported."""
+    if decisions is None:
+        decisions = [approval] if approval is not None else []
     alert_id, txn_id = run.alert_id, run.txn_id
     txn = dict(conn.execute("SELECT * FROM transactions WHERE record_id = ?", (txn_id,)).fetchone())
     alert = dict(conn.execute("SELECT * FROM alerts WHERE record_id = ?", (alert_id,)).fetchone())
     ev, mf, inv = run.evidence, run.quarantine.memo_facts, run.investigator
-    known = set(ev.record_ids) | {alert_id} | ({approval.record_id} if approval else set()) \
+    known = set(ev.record_ids) | {alert_id} | {d.record_id for d in decisions} \
+        | ({approval.record_id} if approval else set()) \
         | ({resolution.record_id} if resolution else set()) | ({audit_ref.record_id} if audit_ref else set())
     sections: dict[str, list[SentenceCheck]] = {k: [] for k in (
         "case_summary", "subjects", "transaction_details", "red_flags", "screening", "quarantine_note",
         "recommendation", "human_decision", "audit_ref")}
 
-    def say(section: str, text: str, *ids: str) -> None:
-        sections[section].append(verify_code_sentence(text, list(ids), known, section))
+    def say(section: str, text: str, *ids: str, source: Literal["CODE", "HUMAN"] = "CODE") -> None:
+        sections[section].append(verify_code_sentence(text, list(ids), known, section, source))
 
     # 1. Case summary
     say("case_summary", f"Alert {alert_id} (rule {md(alert['rule_id'])}) was raised on transaction {txn_id} for "
@@ -173,12 +178,19 @@ def build_report(conn: sqlite3.Connection, run: "CaseRun", approval: Approval | 
     say("recommendation", f"Policy engine route: {run.decision.route.value} "
                           f"({', '.join(r.code for r in run.decision.reasons[:4])})", alert_id)
 
-    # 9. Human decision
-    if approval is not None:
-        say("human_decision", f"{approval.decision} by {md(approval.actor)} ({approval.role}) at {md(approval.ts)}; "
-                              f"reason: {md(approval.reason, 300)}", approval.record_id)
-    else:
+    # 9. Human decision: every decision in order, each cited by its approval record. The reason is the person's
+    # own words, so code quotes and escapes it as data (it can never form a citation) instead of writing narrative.
+    for d in decisions:
+        action = f" {d.action}" if d.action else ""
+        override = ", override" if d.override else ""
+        say("human_decision", f"{d.decision}{action} by {md(d.actor)} ({d.role}{override}) at {md(d.ts)}; "
+                              f"stated reason (quoted, untrusted): \u201c{md(d.reason, 300)}\u201d", d.record_id,
+            source="HUMAN")
+    if not decisions:
         say("human_decision", "No human decision recorded yet", alert_id)
+    elif resolution is None:
+        say("human_decision", f"Not committed: the case stays open after {len(decisions)} human decision(s)",
+            decisions[-1].record_id)
     if resolution is not None:
         say("human_decision", f"Committed {resolution.action} on route {resolution.route.value} at "
                               f"{md(resolution.ts)}", resolution.record_id)

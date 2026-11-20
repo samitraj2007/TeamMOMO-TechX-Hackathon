@@ -18,7 +18,7 @@ RejectReason = Literal["UNCITED", "UNKNOWN_RECORD", "IDENTITY_IN_NARRATIVE", "EM
 
 class SentenceCheck(BaseModel):
     section: str
-    source: Literal["CODE", "LLM"]
+    source: Literal["CODE", "LLM", "HUMAN"]
     text: str
     record_ids: list[str]
     accepted: bool
@@ -59,13 +59,17 @@ def verify_text(text: str, known_ids: set[str], section: str, identities: list[s
     return checks
 
 
-def verify_code_sentence(text: str, record_ids: list[str], known_ids: set[str], section: str) -> SentenceCheck:
-    """Code-built sentences carry their citations structurally; values from the DB are not re-parsed."""
+def verify_code_sentence(text: str, record_ids: list[str], known_ids: set[str], section: str,
+                         source: Literal["CODE", "HUMAN"] = "CODE") -> SentenceCheck:
+    """Code-built sentences carry their citations structurally; values from the DB are not re-parsed.
+
+    `HUMAN` marks a code-built line that quotes a person's decision reason. Code still writes the sentence and its
+    citation (the approval record); the quoted reason is escaped, so it can never form a citation of its own."""
     if not record_ids:
         reason = "UNCITED"
     elif any(i not in known_ids for i in record_ids):
         reason = "UNKNOWN_RECORD"
     else:
         reason = None
-    return SentenceCheck(section=section, source="CODE", text=text, record_ids=record_ids, accepted=reason is None,
+    return SentenceCheck(section=section, source=source, text=text, record_ids=record_ids, accepted=reason is None,
                          reason=reason)

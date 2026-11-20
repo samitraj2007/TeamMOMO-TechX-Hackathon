@@ -1,18 +1,19 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
-import { RecordChips, RecordProvider, type Backlink, type RecordSource } from "@/components/records/Records";
+import { useState, type ReactNode } from "react";
+import { RecordChips } from "@/components/records/Records";
 import {
-  ActorTag, Amount, Button, Callout, EmptyState, ErrorState, Field, Hash, LoadingState, Panel, PropertiesTable,
-  RefusedState, RouteTag, SegmentedTabs, StatusTag, Tag, TextArea, Timestamp,
+  ActorTag, Button, Callout, EmptyState, ErrorState, Field, Hash, LoadingState, Panel, PropertiesTable,
+  RefusedState, RouteTag, StatusTag, Tag, TextArea, Timestamp,
 } from "@/components/primitives";
 import { actorFor, useConsoleRole } from "@/components/shell/ConsoleFrame";
-import { ApiError, api } from "@/lib/api";
+import { ApiError } from "@/lib/api";
 import { amount } from "@/lib/format";
 import { Markdown } from "@/lib/markdown";
-import { useCase, useCommit, useDecide, useFileReport, useReport, useRunCase, useTimeline } from "@/lib/queries";
-import type { Action, Approval, CaseDetail, CaseRun, CaseTimeline, Report, Span } from "@/lib/types";
+import { useCommit, useDecide, useFileReport, useReport } from "@/lib/queries";
+import type { Action, Approval, CaseDetail, CaseRun, Route, Span } from "@/lib/types";
 import { Airlock } from "./Airlock";
+import { caseScreen } from "./CaseFrame";
 import { GateLock } from "./GateLock";
 import { PipelineTimeline } from "./PipelineTimeline";
 
@@ -36,116 +37,55 @@ export function rawTextInInvestigator(run: CaseRun, raw: Record<string, string |
   return found;
 }
 
-export function CaseView({ id }: { id: string }) {
-  const detail = useCase(id);
-  const timeline = useTimeline(id);
-  const run = detail.data?.run ?? null;
-  const report = useReport(id, run !== null);
+// ---- Case screens. Each one is its own route under /case/[id]; CaseFrame supplies the data. ----
 
-  const source = useMemo<RecordSource>(() => ({
-    key: `api-${id}`,
-    getRecord: api.record,
-    backlinks: (recordId) => backlinksFor(recordId, report.data, timeline.data),
-  }), [id, report.data, timeline.data]);
-
-  if (detail.isPending) return <LoadingState label={`Loading ${id}`} lines={5} />;
-  if (detail.isError) return <ErrorState error={detail.error} onRetry={() => void detail.refetch()} />;
-
-  return (
-    <RecordProvider source={source}>
-      <CaseBody id={id} detail={detail.data} timeline={timeline} report={report} onRan={() => void detail.refetch()} />
-    </RecordProvider>
-  );
-}
-
-function backlinksFor(recordId: string, report: Report | undefined, timeline: CaseTimeline | undefined): Backlink[] {
-  const out: Backlink[] = [];
-  for (const s of report?.sentences ?? []) {
-    if (s.record_ids.includes(recordId)) out.push({ where: `Report · ${s.section}`, text: s.accepted ? s.text : `Rejected (${s.reason})` });
-  }
-  for (const step of timeline?.steps ?? []) {
-    if (step.record_ids.includes(recordId) || step.service_calls.some((c) => c.record_ids.includes(recordId))) {
-      out.push({ where: `Timeline · ${step.step}`, text: step.summary });
-    }
-  }
-  return out;
-}
-
-function CaseBody({
-  id,
-  detail,
-  timeline,
-  report,
-  onRan,
-}: {
-  id: string;
-  detail: CaseDetail;
-  timeline: ReturnType<typeof useTimeline>;
-  report: ReturnType<typeof useReport>;
-  onRan: () => void;
-}) {
-  const runMut = useRunCase(id);
-  const [tab, setTab] = useState<"quarantine" | "evidence" | "report">("quarantine");
+/** /case/[id]: the audit timeline at full width, with the code decision beside it on wide screens. */
+export const PipelineScreen = caseScreen(({ detail, timeline }) => {
   const run = detail.run;
-  const s = detail.summary;
-  const rawCount = run ? rawTextInInvestigator(run, detail.raw_fields) : null;
-
   return (
-    <div className="route-in flex flex-col gap-5 px-2 pb-8 pt-1">
-      <header className="flex flex-wrap items-end gap-x-6 gap-y-4 pb-1">
-        <div className="flex min-w-0 flex-col gap-2.5">
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
-            {s.demo_tag && (
-              <span title={`Demo case ${s.demo_tag}`} className="num inline-flex h-5 w-5 items-center justify-center rounded-full bg-text text-[10px] font-semibold text-bg">
-                {s.demo_tag}
-              </span>
-            )}
-            <span className="num font-medium text-text">{s.alert_id}</span>
-            <Tag tone="neutral" mono>{s.rule_id}</Tag>
-          </div>
-          <h1 className="text-[30px] font-semibold leading-9 tracking-[-0.03em] text-text">{s.title}</h1>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
-            <Amount value={s.amount} currency={s.currency} className="font-semibold text-text" />
-            <span>{s.payee_name ?? "No payee name"}</span>
-            <Timestamp iso={detail.ts} />
-          </div>
-        </div>
-        <div className="ms-auto flex flex-wrap items-center gap-2">
-          <RouteTag route={run?.decision.route ?? s.last_route} size="lg" />
-          <Button variant="solid" disabled={runMut.isPending} onClick={() => runMut.mutate(undefined, { onSuccess: onRan })}>
-            {runMut.isPending ? "Running…" : run ? "Run again" : "Run investigation"}
-          </Button>
-        </div>
-      </header>
-      {runMut.isError && <ErrorState error={runMut.error} onRetry={() => runMut.mutate(undefined, { onSuccess: onRan })} />}
-      {run && run.investigator.status !== "ok" && (
-        <Callout kind="warn" title="Failed closed">
-          Investigator status {run.investigator.status}. The route was not loosened.
-        </Callout>
-      )}
-
-      <div className="grid items-start gap-4 xl:grid-cols-[minmax(264px,300px)_minmax(0,1fr)_minmax(280px,316px)] 2xl:gap-5">
-        <Panel title="Pipeline" tint="surface" className="xl:sticky xl:top-0">
-          {timeline.isPending ? <LoadingState label="Loading the audit timeline" lines={4} />
-            : timeline.isError ? <ErrorState error={timeline.error} onRetry={() => void timeline.refetch()} />
-            : timeline.data.steps.length === 0 ? <EmptyState title="No audit steps yet" body="Run the investigation to write the first steps." />
-            : <PipelineTimeline steps={timeline.data.steps} revealKey={run?.total_ms ?? "idle"} renderRecords={(ids) => <RecordChips ids={ids} />} />}
-        </Panel>
-
-        <div className="flex min-w-0 flex-col gap-3">
-          <SegmentedTabs variant="underline" label="Case view" value={tab} onChange={setTab} options={[
-            { value: "quarantine", label: "Quarantine", count: run?.quarantine.spans.length },
-            { value: "evidence", label: "Evidence", count: run?.evidence.record_ids.length },
-            { value: "report", label: "Report" },
-          ]} />
-          {tab === "quarantine" && <Quarantine detail={detail} rawCount={rawCount} />}
-          {tab === "evidence" && <Evidence run={run} />}
-          {tab === "report" && <ReportPane report={report} hasRun={run !== null} />}
-        </div>
-
-        <DecisionRail id={id} detail={detail} />
+    <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,340px)] 2xl:gap-5">
+      <Panel title="Pipeline" tint="surface">
+        {timeline.isPending ? <LoadingState label="Loading the audit timeline" lines={4} />
+          : timeline.isError ? <ErrorState error={timeline.error} onRetry={() => void timeline.refetch()} />
+          : timeline.data.steps.length === 0 ? <EmptyState title="No audit steps yet" body="Run the investigation to write the first steps." />
+          : <PipelineTimeline steps={timeline.data.steps} revealKey={run?.total_ms ?? "idle"} renderRecords={(ids) => <RecordChips ids={ids} />} />}
+      </Panel>
+      <div className="xl:sticky xl:top-0">
+        <DecisionSummary run={run} />
       </div>
     </div>
+  );
+});
+
+export const QuarantineScreen = caseScreen(({ detail }) => (
+  <Quarantine detail={detail} rawCount={detail.run ? rawTextInInvestigator(detail.run, detail.raw_fields) : null} />
+));
+
+export const EvidenceScreen = caseScreen(({ detail }) => <Evidence run={detail.run} />);
+
+export const ReportScreen = caseScreen(({ report, detail }) => <ReportPane report={report} hasRun={detail.run !== null} />);
+
+export const DecisionScreen = caseScreen(({ id, detail }) => <DecisionRail id={id} detail={detail} />);
+
+function DecisionSummary({ run }: { run: CaseRun | null }) {
+  return (
+    <Panel title="Decision" tint="surface">
+      {!run ? <EmptyState mascot={false} title="Waiting for a run" body="Policy decides only after the pipeline runs." /> : (
+        <div className="flex flex-col gap-3">
+          <RouteTag route={run.decision.route} size="lg" />
+          <ul className="flex flex-col gap-1.5">
+            {run.decision.reasons.map((r) => (
+              <li key={r.code} className="text-sm">
+                <span className="num text-text">{r.code}</span>
+                <span className="text-muted"> · {r.detail}</span>
+              </li>
+            ))}
+            {run.decision.reasons.length === 0 && <li className="text-sm text-muted">No reason codes. Code route {run.code_route}.</li>}
+          </ul>
+          <span className="num text-2xs text-muted">threshold {amount(run.decision.threshold_aed)} AED · gate {run.gate}</span>
+        </div>
+      )}
+    </Panel>
   );
 }
 
@@ -285,6 +225,54 @@ function ReportPane({ report, hasRun }: { report: ReturnType<typeof useReport>; 
   );
 }
 
+/** Mirrors the backend: an override needs at least this many characters of reason; any decision needs 3. */
+const OVERRIDE_MIN_REASON = 20;
+const MIN_REASON = 3;
+const ACTION_RANK: Record<Action, number> = { CLEAR: 0, ESCALATE: 1, HOLD_AND_BLOCK: 2 };
+
+/** Same rule as case_resolution.is_override: Reject always; Approve when it is less strict than the proposal. */
+function isOverride(route: Route, decision: Approval["decision"], action?: Action): boolean {
+  if (decision === "REJECT") return true;
+  const proposed: Action = route === "PENDING_APPROVAL" ? "HOLD_AND_BLOCK" : route === "NEEDS_REVIEW" ? "ESCALATE" : "CLEAR";
+  return decision === "APPROVE" && action !== undefined && ACTION_RANK[action] < ACTION_RANK[proposed];
+}
+
+const DECISION_TONE = { APPROVE: "sage", REJECT: "red", MORE_INFO: "amber" } as const;
+const STATUS_TEXT = {
+  COMMITTED: "Approved and committed.",
+  REJECTED: "Rejected. Nothing was committed, so the case stays open and the code route stands.",
+  AWAITING_INFO: "More information requested. The case stays open.",
+} as const;
+
+function DecisionHistory({ decisions }: { decisions: Approval[] }) {
+  return (
+    <Panel title="Human decisions" tint="surface" actions={<span className="num text-2xs text-muted">{decisions.length}</span>}>
+      {decisions.length === 0 ? (
+        <p className="text-sm text-muted">No human decision recorded yet.</p>
+      ) : (
+        <ol className="flex flex-col">
+          {decisions.map((d) => (
+            <li key={d.record_id} className="flex flex-col gap-1.5 border-t border-hairline/70 py-2.5 first:border-t-0 first:pt-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <Tag tone={DECISION_TONE[d.decision]}>{d.decision}</Tag>
+                {d.action && <Tag tone="neutral" mono>{d.action}</Tag>}
+                {d.override && <Tag tone="amber" variant="tint">override</Tag>}
+                <RecordChips ids={[d.record_id]} />
+              </div>
+              <span className="text-xs text-muted">
+                <span className="num text-text">{d.actor}</span> ({d.role === "COMPLIANCE_OFFICER" ? "compliance officer" : "analyst"}) · <Timestamp iso={d.ts} />
+              </span>
+              <blockquote className="border-s-2 border-hairline-strong ps-3 text-sm text-text wrap-anywhere">
+                {d.reason}
+              </blockquote>
+            </li>
+          ))}
+        </ol>
+      )}
+    </Panel>
+  );
+}
+
 function DecisionRail({ id, detail }: { id: string; detail: CaseDetail }) {
   const { role } = useConsoleRole();
   const run = detail.run;
@@ -295,7 +283,14 @@ function DecisionRail({ id, detail }: { id: string; detail: CaseDetail }) {
   const [refusal, setRefusal] = useState<ApiError | null>(null);
   const [filing, setFiling] = useState<{ id: string; hash: string } | null>(null);
   const resolution = detail.resolution ?? run?.resolution ?? null;
-  const approval = detail.approval;
+  const decisions = detail.decisions ?? (detail.approval ? [detail.approval] : []);
+  const latest = decisions.at(-1) ?? null;
+  const approveAction: Action | undefined = run ? (run.decision.route === "PENDING_APPROVAL" ? "HOLD_AND_BLOCK" : "CLEAR") : undefined;
+  const trimmed = reason.trim().length;
+  const needs = (decision: Approval["decision"], action?: Action) =>
+    run && isOverride(run.decision.route, decision, action) ? OVERRIDE_MIN_REASON : MIN_REASON;
+  const approveNeeds = needs("APPROVE", approveAction);
+  const rejectNeeds = needs("REJECT");
 
   function onFail(e: unknown) {
     if (e instanceof ApiError && (e.status === 403 || e.status === 409 || e.status === 422)) setRefusal(e);
@@ -305,36 +300,21 @@ function DecisionRail({ id, detail }: { id: string; detail: CaseDetail }) {
     setRefusal(null);
     try {
       await decide.mutateAsync({ decision, action, reason: reason.trim(), role, actor: actorFor(role) });
+      setReason("");
     } catch (e) {
       onFail(e);
     }
   }
 
   return (
-    <div className="flex flex-col gap-3 xl:sticky xl:top-0">
-      <Panel title="Decision" tint="surface">
-        {!run ? <EmptyState mascot={false} title="Waiting for a run" body="Policy decides only after the pipeline runs." /> : (
-          <div className="flex flex-col gap-3">
-            <RouteTag route={run.decision.route} size="lg" />
-            <ul className="flex flex-col gap-1.5">
-              {run.decision.reasons.map((r) => (
-                <li key={r.code} className="text-sm">
-                  <span className="num text-text">{r.code}</span>
-                  <span className="text-muted"> · {r.detail}</span>
-                </li>
-              ))}
-              {run.decision.reasons.length === 0 && <li className="text-sm text-muted">No reason codes. Code route {run.code_route}.</li>}
-            </ul>
-            <span className="num text-2xs text-muted">threshold {amount(run.decision.threshold_aed)} AED · gate {run.gate}</span>
-          </div>
-        )}
-      </Panel>
+    <div className="grid items-start gap-4 lg:grid-cols-2 2xl:gap-5">
+      <DecisionSummary run={run} />
 
       {run && run.decision.route !== "AUTO_CLEAR" && (
         <GateLock unlocked={resolution !== null} title={resolution ? `Committed · ${resolution.action}` : "Approval gate"}
           detail={resolution ? `${resolution.record_id}${resolution.approval_id ? ` · ${resolution.approval_id}` : ""}` : `Signing as ${role === "COMPLIANCE_OFFICER" ? "compliance officer" : "analyst"}`}>
           {resolution ? (
-            approval && <p className="text-sm text-muted">{approval.actor} ({approval.role}): {approval.reason}</p>
+            latest && <p className="text-sm text-muted">Committed on {latest.record_id} by {latest.actor}. Later decisions are refused.</p>
           ) : (
             <div className="flex flex-col gap-2">
               <Button size="sm" variant="ghost" onClick={() => {
@@ -343,18 +323,32 @@ function DecisionRail({ id, detail }: { id: string; detail: CaseDetail }) {
               }}>
                 {run.decision.route === "PENDING_APPROVAL" ? "Commit block without approval" : "Try to release without approval"}
               </Button>
-              <Field label="Reason" htmlFor={`reason-${id}`} hint="An override needs at least 20 characters.">
+              {latest && latest.decision !== "APPROVE" && (
+                <Callout kind="note" title={latest.decision === "REJECT" ? "Rejected, still open" : "Waiting for information"}>
+                  {latest.actor} recorded {latest.decision} on {latest.record_id}. Nothing was committed, so the case can still be approved or rejected.
+                </Callout>
+              )}
+              <Field label="Reason" htmlFor={`reason-${id}`}
+                hint={`${trimmed} characters. Reject${approveNeeds === OVERRIDE_MIN_REASON ? " and Approve (release)" : ""} count as overrides and need ${OVERRIDE_MIN_REASON}.`}>
                 <TextArea id={`reason-${id}`} value={reason} onChange={(e) => setReason(e.target.value)} />
               </Field>
               <div className="flex gap-2">
-                <Button variant="key" disabled={decide.isPending || reason.trim().length < 3}
-                  onClick={() => void onDecide("APPROVE", run.decision.route === "PENDING_APPROVAL" ? "HOLD_AND_BLOCK" : "CLEAR")}>
+                <Button variant="key" disabled={decide.isPending || trimmed < approveNeeds}
+                  title={trimmed < approveNeeds ? `Needs a reason of at least ${approveNeeds} characters` : undefined}
+                  onClick={() => void onDecide("APPROVE", approveAction)}>
                   Approve
                 </Button>
-                <Button variant="danger" disabled={decide.isPending || reason.trim().length < 3} onClick={() => void onDecide("REJECT")}>
+                <Button variant="danger" disabled={decide.isPending || trimmed < rejectNeeds}
+                  title={trimmed < rejectNeeds ? `Reject is an override: it needs at least ${rejectNeeds} characters` : undefined}
+                  onClick={() => void onDecide("REJECT")}>
                   Reject
                 </Button>
               </div>
+              {decide.data && !refusal && (
+                <p role="status" className="text-xs text-muted">
+                  {decide.data.approval.record_id}: {STATUS_TEXT[decide.data.status]}
+                </p>
+              )}
             </div>
           )}
           {refusal && <RefusedState status={refusal.status} detail={refusal.message} />}
@@ -364,6 +358,8 @@ function DecisionRail({ id, detail }: { id: string; detail: CaseDetail }) {
       {run?.decision.route === "AUTO_CLEAR" && (
         <Callout kind="note" title="Auto-cleared">Code committed this case. No officer action is required.</Callout>
       )}
+
+      {run && <DecisionHistory decisions={decisions} />}
 
       <Panel title="Filing" tint="surface" className="surface-key rounded-panel">
         {!run ? <span className="text-sm text-muted">Filing opens after a run.</span> : (

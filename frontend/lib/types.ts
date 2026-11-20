@@ -260,13 +260,16 @@ export interface CaseDetail {
   ts: string | null;
   raw_fields: Record<string, string | null>;
   run: CaseRun | null;
+  /** The latest human decision. */
   approval: Approval | null;
+  /** Every human decision, oldest first (older backends omit it). */
+  decisions?: Approval[];
   resolution: Resolution | null;
 }
 
 export interface SentenceCheck {
   section: string;
-  source: "CODE" | "LLM";
+  source: "CODE" | "LLM" | "HUMAN";
   text: string;
   record_ids: string[];
   accepted: boolean;

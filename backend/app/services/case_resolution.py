@@ -82,6 +82,13 @@ def latest_approval(conn: sqlite3.Connection, alert_id: str) -> Approval | None:
     return Approval(**{**dict(row), "override": bool(row["override"])}) if row else None
 
 
+def approvals_for(conn: sqlite3.Connection, alert_id: str) -> list[Approval]:
+    """Every human decision on the case, oldest first. Rejections and requests for more information stay on
+    record next to the approval that finally committed the case."""
+    rows = conn.execute("SELECT * FROM approvals WHERE alert_id = ? ORDER BY record_id", (alert_id,)).fetchall()
+    return [Approval(**{**dict(r), "override": bool(r["override"])}) for r in rows]
+
+
 def latest_resolution(conn: sqlite3.Connection, alert_id: str) -> Resolution | None:
     row = conn.execute("SELECT * FROM resolutions WHERE alert_id = ? ORDER BY record_id DESC LIMIT 1",
                        (alert_id,)).fetchone()

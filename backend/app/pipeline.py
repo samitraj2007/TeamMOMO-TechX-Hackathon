@@ -15,7 +15,7 @@ from backend.app.reports.builder import Report, build_report, identities, verify
 from backend.app.schemas import ActorType, KycDevicesResult, Resolution, Route, SanctionsResult, Velocity
 from backend.app.security.classifier import Guard
 from backend.app.security.quarantine import QuarantineResult, quarantine
-from backend.app.services.case_resolution import commit_case_resolution, latest_approval
+from backend.app.services.case_resolution import approvals_for, commit_case_resolution, latest_approval
 from backend.app.services.kyc_devices import RecordNotFound, fetch_customer_kyc_and_devices
 from backend.app.services.sanctions import check_sanctions_watchlist
 from backend.app.services.velocity import fetch_velocity
@@ -350,6 +350,7 @@ def run_case(conn: sqlite3.Connection, alert_id: str, guard: Guard, threshold: f
                                        reasons=[ReasonOut(code=r.code, route=r.route, detail=r.detail)
                                                 for r in decision.reasons]),
                   resolution=resolution, gate=gate, total_ms=0)
-    run.report = build_report(conn, run, latest_approval(conn, alert_id), resolution, audit.latest_for(conn, alert_id))
+    run.report = build_report(conn, run, latest_approval(conn, alert_id), resolution, audit.latest_for(conn, alert_id),
+                              approvals_for(conn, alert_id))
     run.total_ms = _ms(t_total)
     return run

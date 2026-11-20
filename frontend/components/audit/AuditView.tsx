@@ -105,8 +105,8 @@ export function AuditView() {
         {global.isError && <ErrorState error={global.error} onRetry={() => void global.refetch()} />}
         {global.data === null && (
           <EmptyState
-            title="Needs GET /audit"
-            body="The global table is not on this backend. Per-case audit and GET /audit/verify are live above."
+            title="No global audit table on this backend"
+            body="The backend does not serve GET /audit. Per-case audit and the chain check above cover the whole log."
           />
         )}
         {global.data && (
