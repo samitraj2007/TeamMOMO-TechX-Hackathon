@@ -6,7 +6,8 @@ from backend.app.config import get_settings
 SCHEMA = """
 CREATE TABLE customers (
   record_id TEXT PRIMARY KEY, name TEXT NOT NULL, name_ar TEXT, nationality TEXT,
-  dob TEXT, segment TEXT, kyc_status TEXT, kyc_note TEXT, risk_rating TEXT, customer_since TEXT
+  dob TEXT, segment TEXT, kyc_status TEXT, kyc_note TEXT, risk_rating TEXT, customer_since TEXT,
+  occupation TEXT
 );
 CREATE TABLE devices (
   record_id TEXT PRIMARY KEY, customer_id TEXT NOT NULL REFERENCES customers(record_id),
@@ -50,9 +51,9 @@ CREATE TRIGGER audit_log_no_update BEFORE UPDATE ON audit_log
 BEGIN SELECT RAISE(ABORT, 'audit_log is append-only'); END;
 CREATE TRIGGER audit_log_no_delete BEFORE DELETE ON audit_log
 BEGIN SELECT RAISE(ABORT, 'audit_log is append-only'); END;
-PRAGMA user_version = 4;
+PRAGMA user_version = 5;
 """
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 
 def connect(path: Path | None = None) -> sqlite3.Connection:

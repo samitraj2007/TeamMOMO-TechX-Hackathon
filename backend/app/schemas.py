@@ -25,6 +25,8 @@ class Customer(BaseModel):
     kyc_status: str
     kyc_note: str | None
     risk_rating: str
+    # Free text from the KYC record. Untrusted: it is quarantined like a memo and never reaches the model.
+    occupation: str | None = None
 
 
 class Device(BaseModel):

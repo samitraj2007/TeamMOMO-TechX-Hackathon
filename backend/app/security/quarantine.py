@@ -13,7 +13,7 @@ from backend.app.security.classifier import Guard, GuardVerdict
 from backend.app.security.normalise import normalise
 from backend.app.security.regex_filter import RegexHit, scan_field
 
-FREE_TEXT_FIELDS = ("memo", "payee_name", "device_label", "kyc_note")
+FREE_TEXT_FIELDS = ("memo", "payee_name", "device_label", "kyc_note", "occupation")
 
 
 class Purpose(str, Enum):
@@ -50,7 +50,7 @@ SignalCode = Annotated[str, StringConstraints(pattern=r"^[A-Z_]{3,40}$")]
 
 class InjectionSignal(BaseModel):
     code: SignalCode
-    field: Literal["memo", "payee_name", "device_label", "kyc_note"]
+    field: Literal["memo", "payee_name", "device_label", "kyc_note", "occupation"]
     layer: Literal["CODE", "LLM"]
 
 

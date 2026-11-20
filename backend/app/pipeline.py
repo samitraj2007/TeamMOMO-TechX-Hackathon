@@ -91,10 +91,32 @@ def load_case(conn: sqlite3.Connection, alert_id: str) -> tuple[dict, dict]:
 
 
 def free_text_fields(conn: sqlite3.Connection, txn: dict) -> dict[str, str | None]:
-    device = conn.execute("SELECT label FROM devices WHERE record_id = ?", (txn["device_id"],)).fetchone()
-    customer = conn.execute("SELECT kyc_note FROM customers WHERE record_id = ?", (txn["customer_id"],)).fetchone()
-    return {"memo": txn["memo"], "payee_name": txn["payee_name"],
-            "device_label": device["label"] if device else None, "kyc_note": customer["kyc_note"] if customer else None}
+    """Every untrusted free-text field the case touches, for quarantine.
+
+    The KYC fields come from the output of the fetch_customer_kyc_and_devices tool itself, so a compromised
+    KYC record (a note or an occupation that addresses the model) is sanitized exactly like a memo. If the tool
+    fails (unknown customer, timeout), the same fields are read directly so quarantine never scans less; the
+    evidence step records the failure separately and the case fails closed to review."""
+    fields: dict[str, str | None] = {"memo": txn["memo"], "payee_name": txn["payee_name"],
+                                     "device_label": None, "kyc_note": None, "occupation": None}
+    try:
+        kyc = fetch_customer_kyc_and_devices(conn, txn["customer_id"], txn["device_id"])
+    except Exception:
+        kyc = None
+    if kyc is not None:
+        fields["kyc_note"] = kyc.customer.kyc_note
+        fields["occupation"] = kyc.customer.occupation
+    else:
+        row = conn.execute("SELECT kyc_note, occupation FROM customers WHERE record_id = ?",
+                           (txn["customer_id"],)).fetchone()
+        if row is not None:
+            fields["kyc_note"], fields["occupation"] = row["kyc_note"], row["occupation"]
+    if kyc is not None and kyc.txn_device is not None:
+        fields["device_label"] = kyc.txn_device.label
+    else:
+        device = conn.execute("SELECT label FROM devices WHERE record_id = ?", (txn["device_id"],)).fetchone()
+        fields["device_label"] = device["label"] if device else None
+    return fields
 
 
 def _gather_evidence(conn: sqlite3.Connection, txn: dict) -> Evidence:

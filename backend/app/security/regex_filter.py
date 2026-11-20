@@ -16,6 +16,7 @@ PATTERNS: list[tuple[str, re.Pattern]] = [(code, re.compile(p)) for code, p in [
     ("FAKE_SYSTEM_TAG", r"\b(system|admin|developer)\s+(override|mode|prompt|message|instruction)\b"),
     ("PROMPT_DELIMITER", r"<\|?(im_start|im_end|system|endoftext)\|?>|^\s*#{2,}\s*(system|instruction)|```"),
     ("ROLE_ADDRESS", r"\b(assistant|ai|chatbot|llm|gpt|model|investigator)\s*:"),
+    ("ROLE_ADDRESS", r"\bnote\s+to\s+(the\s+)?(investigating\s+|reviewing\s+)?(ai|model|assistant|investigator|llm|system)\b"),
     ("DECISION_COERCION",
      r"\b(mark|classify|flag|label|treat|set|report)\b[^.\n]{0,30}?\b(safe|legitimate|cleared?|approved|low[- ]risk|"
      r"not\s+fraud|benign)\b"),
@@ -24,9 +25,13 @@ PATTERNS: list[tuple[str, re.Pattern]] = [(code, re.compile(p)) for code, p in [
     ("REVIEW_BYPASS",
      r"\b(no|without|skip|bypass|avoid)\s+(further\s+|any\s+|manual\s+)?(review|checks?|verification|screening|"
      r"approval|escalation)\b"),
+    ("REVIEW_BYPASS",
+     r"\b(skip|bypass|ignore|omit|waive|disable)\b[^.\n]{0,20}?\b(watch\s*list|sanctions?|screening|kyc|aml)\b"
+     r"[^.\n]{0,15}?\b(checks?|screening|review|lookup)\b"),
     ("SOCIAL_ENGINEERING",
      r"\b(compliance|management|ceo|cfo|security\s+team)\b[^.\n]{0,25}?\b(pre-?approved|has\s+approved|authori[sz]ed|"
      r"cleared)\b"),
+    ("SOCIAL_ENGINEERING", r"\b(customer|client|account|payment|transfer)\s+(is|was|has\s+been)\s+pre-?approved\b"),
     ("OVERRIDE_INSTRUCTION", r"(تجاهل|تخط|تخطى|انس|اهمل|الغ)[^.\n]{0,40}?(التعليمات|الاوامر|القواعد|التوجيهات)"),
     ("DECISION_COERCION", r"(وافق|اعتمد|حرر|افرج|مرر)[^.\n]{0,30}?(التحويل|تحويل|الاموال|الدفعه|المعامله)"),
     ("DECISION_COERCION", r"(صنف|اعتبر)[^.\n]{0,30}?(امنه|امنا|سليمه|سليما|قانونيه)"),

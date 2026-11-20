@@ -4,7 +4,7 @@ import threading
 from datetime import datetime, timezone
 from typing import Literal
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Path, Query, Request
+from fastapi import Body, Depends, FastAPI, Header, HTTPException, Path, Query, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -444,6 +444,34 @@ def audit_verify(anchor: str | None = Query(None, pattern=r"^[0-9a-f]{64}$"), co
 def eval_scorecard(conn=Depends(get_conn)):
     """Aggregates only. Labels stay in the query; they are not part of this response or of any case response."""
     return scorecard(conn, settings.aed_block_threshold)
+
+
+class KycTamperIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    occupation: str | None = Field(default=None, max_length=500)
+
+
+@app.post("/demo/kyc/{customer_id}")
+def demo_tamper_kyc(customer_id: str = Path(pattern=r"^CUS-\d{4,6}$"), body: KycTamperIn = Body(...),
+                    x_admin_token: str | None = Header(None)) -> dict:
+    """Curveball U-1.2 hook: simulates a compromised KYC record by writing its occupation field.
+    Guarded exactly like /demo/reset. The text is not echoed or audited; only its length is returned."""
+    if settings.demo_mode == "off":
+        raise HTTPException(404, "Not Found")
+    expected = settings.demo_admin_token
+    if not expected or not x_admin_token or not hmac.compare_digest(x_admin_token.encode(), expected.encode()):
+        raise HTTPException(403, "Admin token required")
+    with _db_lock:
+        ensure_seeded()
+        conn = connect()
+        try:
+            cur = conn.execute("UPDATE customers SET occupation = ? WHERE record_id = ?", (body.occupation, customer_id))
+            conn.commit()
+        finally:
+            conn.close()
+    if cur.rowcount == 0:
+        raise HTTPException(404, f"{customer_id} not found")
+    return {"customer_id": customer_id, "occupation_chars": len(body.occupation or "")}
 
 
 @app.post("/demo/reset")
