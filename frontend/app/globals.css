@@ -235,6 +235,54 @@ body {
   color: var(--color-red-text);
 }
 
+/* Charcoal palette for the landing hero and header.
+   The app below them keeps the paper tokens above.
+   To switch the whole app later, move this custom-property block onto `html`. */
+.palette-charcoal {
+  --color-bg: #0e0e0d;
+  --color-surface: #151514;
+  --color-raised: #1c1c1a;
+  --color-overlay: #151514;
+  --color-hairline: #2a2a27;
+  --color-hairline-strong: #3a3a36;
+  --color-text: #ece8df;
+  --color-muted: #8c8a82;
+  --color-brass: #b8975a;
+  --color-ink: #ece8df;
+  --color-fg: #ece8df;
+  --color-faint: #8c8a82;
+  --momo-cap: clamp(9.5rem, 0.5rem + 11.25vw, 14rem);
+  color-scheme: dark;
+}
+
+.palette-charcoal :focus-visible {
+  outline-color: var(--color-brass);
+}
+
+.charcoal-field {
+  background-color: var(--color-bg);
+  background-image:
+    radial-gradient(120% 90% at 50% 40%, transparent 42%, rgb(0 0 0 / 0.55) 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.93 0 0 0 0 0.91 0 0 0 0 0.87 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: auto, 140px 140px;
+}
+
+.charcoal-contours {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='640' fill='none'%3E%3Cg stroke='%238C8A82' stroke-width='1' opacity='0.55'%3E%3Cellipse cx='320' cy='320' rx='80' ry='48'/%3E%3Cellipse cx='320' cy='320' rx='150' ry='90'/%3E%3Cellipse cx='320' cy='320' rx='230' ry='140'/%3E%3Cellipse cx='320' cy='320' rx='310' ry='196'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 640px 640px;
+  background-position: center;
+  mask-image: radial-gradient(closest-side at 50% 46%, transparent 34%, #000 88%);
+  opacity: 0.22;
+}
+
+.hero-press {
+  transition: transform 120ms var(--ease-out);
+}
+
+.palette-charcoal .hero-press:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

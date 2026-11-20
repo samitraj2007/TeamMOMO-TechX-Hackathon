@@ -1,7 +1,8 @@
 "use client";
 
-import { motion } from "motion/react";
+import { motion, useMotionValue, useSpring } from "motion/react";
 import Link from "next/link";
+import { type PointerEvent } from "react";
 import { MomoLockup } from "@/components/brand/MomoLockup";
 import { Airlock } from "@/components/case/Airlock";
 import { rawTextInInvestigator } from "@/components/case/CaseView";
@@ -39,23 +40,50 @@ const STEPS = [
 export function Landing() {
   const cases = useCases(false);
   const b = cases.data?.find((c) => c.demo_tag === "B");
+  const motionOK = useMotionOK();
+  const glassX = useSpring(useMotionValue(0), { stiffness: 120, damping: 20 });
+  const glassY = useSpring(useMotionValue(0), { stiffness: 120, damping: 20 });
+
+  function shiftGlass(event: PointerEvent<HTMLElement>) {
+    if (!motionOK) return;
+    const box = event.currentTarget.getBoundingClientRect();
+    const x = (event.clientX - box.left) / box.width - 0.5;
+    const y = (event.clientY - box.top) / box.height - 0.5;
+    glassX.set(Math.max(-1, Math.min(1, x)) * 6);
+    glassY.set(Math.max(-1, Math.min(1, y)) * 6);
+  }
 
   return (
     <div>
-      <section className="flex min-h-[calc(100svh-56px)] flex-col items-center justify-center bg-text px-8 py-16 text-bg">
-        <MomoLockup />
-        <p className="mt-16 max-w-[42ch] text-center font-sans text-sm font-normal leading-5 tracking-normal text-bg">
-          GulfHorizon: an autonomous fraud-triage agent that can&apos;t be talked into releasing funds
-        </p>
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-          <Link href="/queue" className="press inline-flex h-9 items-center rounded-full bg-bg px-4 text-sm text-text">
-            Open the queue
-          </Link>
-          {b && (
-            <Link href={`/case/${b.alert_id}`} className="press inline-flex h-9 items-center rounded-full border border-brass px-4 text-sm text-bg">
-              Watch Case B
-            </Link>
-          )}
+      <section
+        className="palette-charcoal charcoal-field relative flex min-h-[calc(100svh-56px)] flex-col items-center justify-center overflow-hidden px-10 text-text"
+        onPointerMove={shiftGlass}
+        onPointerLeave={() => { glassX.set(0); glassY.set(0); }}
+      >
+        <div aria-hidden className="charcoal-contours pointer-events-none absolute inset-0" />
+        <div className="relative z-10 flex w-full max-w-[1400px] flex-col items-center">
+          <MomoLockup />
+          <div className="flex w-max max-w-full flex-col items-center px-2" style={{ marginTop: "calc(var(--momo-cap) * 1.5)" }}>
+            <p className="whitespace-nowrap text-center font-sans text-sm font-normal leading-5 tracking-normal text-muted">
+              GulfHorizon: an autonomous fraud-triage agent that can&apos;t be talked into releasing funds.
+            </p>
+            <div className="mt-4 h-px w-full bg-hairline" />
+            <div className="relative mt-4 flex flex-wrap items-center justify-center gap-3">
+              <motion.div
+                aria-hidden
+                className="pointer-events-none absolute -right-12 -bottom-12 z-0 h-24 w-64 rounded-[4px] border border-white/10 bg-white/[0.04] shadow-[inset_0_1px_0_#b8975a] backdrop-blur-md"
+                style={{ x: glassX, y: glassY }}
+              />
+              <Link href="/queue" className="hero-press relative z-10 inline-flex h-9 items-center rounded-[4px] bg-text px-4 text-sm text-bg">
+                Open the queue
+              </Link>
+              {b && (
+                <Link href={`/case/${b.alert_id}`} className="hero-press relative z-10 inline-flex h-9 items-center rounded-[4px] border border-brass px-4 text-sm text-text">
+                  Watch Case B
+                </Link>
+              )}
+            </div>
+          </div>
         </div>
       </section>
 

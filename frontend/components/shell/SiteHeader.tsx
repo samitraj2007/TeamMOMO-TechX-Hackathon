@@ -48,6 +48,14 @@ function Chip({ tone, title, children }: { tone: Tone; title?: string; children:
   );
 }
 
+function StatusDot({ label, on }: { label: string; on: boolean }) {
+  return (
+    <span title={label} aria-label={label} className="inline-flex">
+      <span aria-hidden className={cx("h-1.5 w-1.5 rounded-full", on ? "bg-text" : "bg-brass")} />
+    </span>
+  );
+}
+
 export function SiteHeader({ onOpenPalette }: { onOpenPalette: () => void }) {
   const path = useHydratedPath();
   const quiet = path === "/";
@@ -80,12 +88,18 @@ export function SiteHeader({ onOpenPalette }: { onOpenPalette: () => void }) {
   return (
     <header
       className={cx(
-        "sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-hairline px-3",
-        scrolled ? "bg-bg/75 backdrop-blur-md" : "bg-bg",
+        "sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b px-3",
+        quiet
+          ? "palette-charcoal border-hairline bg-surface"
+          : cx("border-hairline", scrolled ? "bg-bg/75 backdrop-blur-md" : "bg-bg"),
       )}
     >
       <Link href="/" className="flex shrink-0 items-center gap-2 pe-1">
-        {!quiet && <Mascot state="idle" size={28} avatar />}
+        {quiet ? (
+          <img src="/brand/momo-body.png" alt="" className="h-7 w-auto" />
+        ) : (
+          <Mascot state="idle" size={28} avatar />
+        )}
         <span className="text-sm font-medium tracking-tight text-text">GulfHorizon</span>
         {!quiet && <span className="num hidden text-2xs text-muted xl:inline">Triage Console</span>}
       </Link>
@@ -99,22 +113,38 @@ export function SiteHeader({ onOpenPalette }: { onOpenPalette: () => void }) {
               href={item.href}
               aria-current={active ? "page" : undefined}
               className={cx(
-                "relative flex items-center px-2.5 text-sm",
+                "group relative flex items-center px-2.5 text-sm",
                 active ? "text-text" : "text-muted hover:text-text",
               )}
             >
               {t(item.key, lang)}
-              {active && (
-                <motion.span
-                  layoutId="nav-underline"
-                  className="absolute inset-x-2 bottom-0 h-0.5 bg-sage"
-                  transition={{ type: "spring", stiffness: 380, damping: 34 }}
+              {quiet ? (
+                <span
+                  className={cx(
+                    "absolute inset-x-2 bottom-1 h-px origin-center bg-text transition-transform duration-200 ease-out",
+                    active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100",
+                  )}
                 />
+              ) : (
+                active && (
+                  <motion.span
+                    layoutId="nav-underline"
+                    className="absolute inset-x-2 bottom-0 h-0.5 bg-sage"
+                    transition={{ type: "spring", stiffness: 380, damping: 34 }}
+                  />
+                )
               )}
             </Link>
           );
         })}
       </nav>
+
+      {quiet && (
+        <span className="flex shrink-0 items-center gap-2 pe-1">
+          <StatusDot label={backend.text} on={backend.tone === "sage"} />
+          <StatusDot label={provider.title} on={provider.tone === "sage"} />
+        </span>
+      )}
 
       {!quiet && (
         <button
