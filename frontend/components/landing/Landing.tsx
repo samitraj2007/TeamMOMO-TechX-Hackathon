@@ -2,7 +2,7 @@
 
 import { motion } from "motion/react";
 import Link from "next/link";
-import { CutoutMascot } from "@/components/brand/CutoutMascot";
+import { MomoLockup } from "@/components/brand/MomoLockup";
 import { Airlock } from "@/components/case/Airlock";
 import { rawTextInInvestigator } from "@/components/case/CaseView";
 import { CountUp } from "@/components/primitives";
@@ -42,30 +42,20 @@ export function Landing() {
 
   return (
     <div>
-      <section className="relative h-[calc(100svh-56px)]">
-        <h1 className="pointer-events-none absolute inset-0 flex items-center justify-center text-[18vw] font-medium leading-none tracking-[-0.07em] text-text">
-          held
-        </h1>
-        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
-          <CutoutMascot className="h-[58vh] w-auto translate-y-[6vh] select-none" />
-        </div>
-        <div className="absolute inset-x-0 bottom-0 z-20 flex items-end justify-between gap-8 px-8 pb-8 lg:px-12 lg:pb-10">
-          <Link
-            href="/queue"
-            className="press inline-flex h-9 items-center rounded-full bg-text px-4 text-sm text-bg"
-          >
+      <section className="flex min-h-[calc(100svh-56px)] flex-col items-center justify-center bg-text px-8 py-16 text-bg">
+        <MomoLockup />
+        <p className="mt-16 max-w-[42ch] text-center font-sans text-sm font-normal leading-5 tracking-normal text-bg">
+          GulfHorizon: an autonomous fraud-triage agent that can&apos;t be talked into releasing funds
+        </p>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <Link href="/queue" className="press inline-flex h-9 items-center rounded-full bg-bg px-4 text-sm text-text">
             Open the queue
           </Link>
-          <div className="max-w-[32ch] text-end">
-            <p className="text-sm leading-5 text-text">
-              An autonomous fraud-triage agent. It can&apos;t be talked into releasing funds.
-            </p>
-            {b && (
-              <Link href={`/case/${b.alert_id}`} className="mt-2 inline-block text-sm text-muted underline decoration-hairline-strong underline-offset-4 hover:text-text">
-                Watch Case B
-              </Link>
-            )}
-          </div>
+          {b && (
+            <Link href={`/case/${b.alert_id}`} className="press inline-flex h-9 items-center rounded-full border border-brass px-4 text-sm text-bg">
+              Watch Case B
+            </Link>
+          )}
         </div>
       </section>
 
