@@ -61,6 +61,11 @@ export function Landing() {
         onPointerLeave={() => { glassX.set(0); glassY.set(0); }}
       >
         <div aria-hidden className="charcoal-contours pointer-events-none absolute inset-0" />
+        <motion.div
+          aria-hidden
+          className="pointer-events-none absolute -right-24 -bottom-20 z-0 h-72 w-[36rem] rounded-[4px] border border-white/10 bg-white/[0.04] shadow-[inset_0_1px_0_#b8975a] backdrop-blur-md"
+          style={{ x: glassX, y: glassY }}
+        />
         <div className="relative z-10 flex w-full max-w-[1400px] flex-col items-center">
           <MomoLockup />
           <div className="flex w-max max-w-full flex-col items-center px-2" style={{ marginTop: "calc(var(--momo-cap) * 1.5)" }}>
@@ -69,11 +74,6 @@ export function Landing() {
             </p>
             <div className="mt-4 h-px w-full bg-hairline" />
             <div className="relative mt-4 flex flex-wrap items-center justify-center gap-3">
-              <motion.div
-                aria-hidden
-                className="pointer-events-none absolute -right-12 -bottom-12 z-0 h-24 w-64 rounded-[4px] border border-white/10 bg-white/[0.04] shadow-[inset_0_1px_0_#b8975a] backdrop-blur-md"
-                style={{ x: glassX, y: glassY }}
-              />
               <Link href="/queue" className="hero-press relative z-10 inline-flex h-9 items-center rounded-[4px] bg-text px-4 text-sm text-bg">
                 Open the queue
               </Link>

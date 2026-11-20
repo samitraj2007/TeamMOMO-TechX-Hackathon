@@ -4,14 +4,14 @@ import { motion, useMotionValue, useSpring } from "motion/react";
 import { useRef, type PointerEvent } from "react";
 import { useMotionOK } from "@/lib/motion";
 
-const HEAD = "/brand/momo-head.png";
+const MASCOT = "/brand/momo-mascot.png";
 
 const RISE = { duration: 0.5, ease: [0.2, 0, 0, 1] as [number, number, number, number] };
 
-/** Lenses on momo-head.png (670×560), as percentages of that crop. */
+/** Lenses on the full 1024 mascot, as percentages of that image. */
 const EYES = [
-  { left: "19%", top: "40%" },
-  { left: "53%", top: "40%" },
+  { left: "23%", top: "34%" },
+  { left: "51%", top: "34%" },
 ] as const;
 
 export function MomoLockup() {
@@ -57,23 +57,25 @@ export function MomoLockup() {
           transition={motionOK ? { delay: 1.05, duration: 6, repeat: Infinity, ease: "easeInOut" } : { duration: 0 }}
         >
           <motion.span className="relative block" style={{ x: lookX, y: lookY }}>
-            <img
-              src={HEAD}
-              alt=""
-              draggable={false}
-              className="block h-[calc(var(--momo-cap)*1.08)] w-auto max-w-none object-contain select-none"
-            />
-            {EYES.map((eye) => (
-              <motion.span
-                key={eye.left}
-                aria-hidden
-                className="absolute h-[18%] w-[22%] rounded-[50%] bg-[#f4e0c4]"
-                style={{ left: eye.left, top: eye.top, transformOrigin: "50% 0%" }}
-                initial={{ scaleY: 0 }}
-                animate={motionOK ? { scaleY: [0, 1, 0] } : { scaleY: 0 }}
-                transition={motionOK ? { delay: 0.78, duration: 0.26, times: [0, 0.4, 1], ease: "easeInOut" } : { duration: 0 }}
+            <span className="relative block translate-y-[44%]">
+              <img
+                src={MASCOT}
+                alt=""
+                draggable={false}
+                className="block h-[calc(var(--momo-cap)*2.55)] w-auto max-w-none object-contain select-none"
               />
-            ))}
+              {EYES.map((eye) => (
+                <motion.span
+                  key={eye.left}
+                  aria-hidden
+                  className="absolute h-[12%] w-[15%] rounded-[50%] bg-[#f4e0c4]"
+                  style={{ left: eye.left, top: eye.top, transformOrigin: "50% 0%" }}
+                  initial={{ scaleY: 0 }}
+                  animate={motionOK ? { scaleY: [0, 1, 0] } : { scaleY: 0 }}
+                  transition={motionOK ? { delay: 0.78, duration: 0.26, times: [0, 0.4, 1], ease: "easeInOut" } : { duration: 0 }}
+                />
+              ))}
+            </span>
           </motion.span>
         </motion.span>
       </motion.span>
