@@ -1,12 +1,11 @@
 "use client";
 
-import { motion, useMotionValue, useScroll, useSpring, useTransform } from "motion/react";
-import Image from "next/image";
+import { motion, useScroll, useSpring } from "motion/react";
 import Link from "next/link";
-import { useRef, useSyncExternalStore, type CSSProperties, type PointerEvent, type ReactNode } from "react";
+import { useRef, useSyncExternalStore, type ReactNode } from "react";
 import { Airlock } from "@/components/case/Airlock";
 import { rawTextInInvestigator } from "@/components/case/CaseView";
-import { HeroField } from "@/components/landing/HeroField";
+import { HeroCanvas } from "@/components/landing/HeroCanvas";
 import { Reveal } from "@/components/landing/Reveal";
 import { ActorTag } from "@/components/primitives";
 import type { ActorType } from "@/lib/labels";
@@ -14,8 +13,6 @@ import { useMotionOK } from "@/lib/motion";
 import { useCase, useCases } from "@/lib/queries";
 
 /** Hero entrance delay, read by the .rise keyframe in globals.css. */
-const rise = (ms: number) => ({ "--rise-delay": `${ms}ms` }) as CSSProperties;
-
 /** Shared hover/press feedback for landing links: quick ease-out, a 2% press, the arrow nudges forward. */
 const PRESS = "transition-[background-color,border-color,color,transform] duration-200 ease-out active:scale-[0.98]";
 
@@ -79,7 +76,7 @@ export function Landing() {
 
   return (
     <div>
-      <Hero caseB={b?.alert_id ?? null} />
+      <HeroCanvas />
 
       {/* The page rises over the fold like a sheet: paper with a rounded leading edge. */}
       <div className="relative z-[2] -mt-8 rounded-t-[32px] bg-bg pt-10">
@@ -171,81 +168,6 @@ export function Landing() {
  * letters from 380 ms 70 ms apart, copy 800 ms, buttons 900 ms, particles from about 1.1 s.
  * Scrolling away lifts and fades the content; the pointer shifts the mascot by at most 6 px.
  */
-function Hero({ caseB }: { caseB: string | null }) {
-  const ref = useRef<HTMLElement>(null);
-  const motionOK = useMotionOK();
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
-  const lift = useTransform(scrollYProgress, [0, 1], motionOK ? [0, -90] : [0, 0]);
-  const fade = useTransform(scrollYProgress, [0, 0.55], [1, 0]);
-  const px = useMotionValue(0);
-  const py = useMotionValue(0);
-  const sx = useSpring(px, { stiffness: 120, damping: 20 });
-  const sy = useSpring(py, { stiffness: 120, damping: 20 });
-
-  function onPointerMove(e: PointerEvent<HTMLElement>) {
-    if (!motionOK || e.pointerType !== "mouse") return;
-    const r = e.currentTarget.getBoundingClientRect();
-    px.set(((e.clientX - r.left) / r.width - 0.5) * 12);
-    py.set(((e.clientY - r.top) / r.height - 0.5) * 12);
-  }
-
-  return (
-    <section
-      ref={ref}
-      onPointerMove={onPointerMove}
-      className="palette-charcoal relative isolate -mt-14 flex min-h-[100svh] flex-col overflow-hidden bg-bg pt-14 text-text"
-    >
-      <div aria-hidden className="hero-light hero-glow absolute inset-0" />
-      <div aria-hidden className="hero-perf absolute inset-0" />
-      <HeroField />
-
-      <motion.div style={{ y: lift, opacity: fade }} className="relative z-[1] flex flex-1 flex-col items-center justify-center px-5 pb-24 pt-6 text-center">
-        <motion.div style={{ x: sx, y: sy }}>
-          <Image
-            src="/brand/momo-mascot.png"
-            alt="MOMO, the guard mascot, holding a shield with a padlock"
-            width={1024}
-            height={1024}
-            priority
-            className="hero-mascot aspect-square h-auto w-[clamp(8.5rem,min(16vw,27svh),17rem)] object-contain"
-          />
-        </motion.div>
-        <h1 aria-label="MOMO" className="mt-1 flex text-[clamp(4rem,min(12vw,19svh),10.5rem)] font-bold leading-[0.86] tracking-[-0.065em] text-text">
-          {["M", "O", "M", "O"].map((l, i) => (
-            <span key={i} aria-hidden className="inline-block overflow-hidden pb-[0.04em] pe-[0.02em]">
-              <span className="hero-letter inline-block" style={rise(380 + i * 70)}>{l}</span>
-            </span>
-          ))}
-        </h1>
-        <p className="rise mt-5 max-w-xl text-[17px] leading-7 text-muted" style={rise(800)}>
-          Payment triage where the model investigates and the code decides.
-        </p>
-        <div className="rise mt-8 flex flex-wrap items-center justify-center gap-3" style={rise(900)}>
-          <Link href="/queue" className={`inline-flex h-11 items-center rounded-full bg-text px-6 text-sm font-medium text-bg hover:bg-text/90 ${PRESS}`}>
-            Open the console
-          </Link>
-          {caseB && (
-            <Link href={`/case/${caseB}`} className={`inline-flex h-11 items-center rounded-full border border-hairline-strong px-6 text-sm font-medium text-text hover:border-text/60 ${PRESS}`}>
-              Watch Case B
-            </Link>
-          )}
-        </div>
-      </motion.div>
-
-      <a
-        href="#mechanism"
-        aria-label="Scroll to how a hostile memo is stopped"
-        className="rise absolute inset-x-0 bottom-8 z-[1] mx-auto flex w-10 justify-center rounded-full py-1"
-        style={rise(1300)}
-      >
-        <span aria-hidden className="relative h-9 w-px overflow-hidden bg-hairline-strong">
-          <span className="hero-cue absolute inset-x-0 top-0 h-3 bg-text/70" />
-        </span>
-      </a>
-    </section>
-  );
-}
-
 function Spine() {
   const list = useRef<HTMLOListElement>(null);
   const motionOK = useMotionOK();
