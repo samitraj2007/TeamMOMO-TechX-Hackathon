@@ -195,11 +195,13 @@ def _investigator_step(r: InvestigatorResult) -> Step:
     cached = " (cached)" if r.cached else ""
     if r.failed:
         tried = " · " + ", ".join(f"{a.provider} {a.status}" for a in r.attempts) if len(r.attempts) > 1 else ""
+        tried += " (injected demo fault)" if any(a.injected for a in r.attempts) else ""
         return Step(key="investigator", label="Investigator (receives MemoFacts only)", actor="LLM",
                     status="DEGRADED", duration_ms=r.duration_ms,
                     summary=f"{r.status} - fail closed to human review{tried}{tokens}{cached}")
     o = r.output
     via = f" · via {r.provider} ({r.model}) after main {r.attempts[0].status}" \
+        + (" (injected demo fault)" if r.attempts[0].injected else "") \
         if r.provider not in (None, "main") and r.attempts and r.attempts[0].provider == "main" else ""
     return Step(key="investigator", label="Investigator (receives MemoFacts only)", actor="LLM",
                 status="FLAGGED" if r.status != "ok" or o.recommendation != "CLEAR" else "DONE",

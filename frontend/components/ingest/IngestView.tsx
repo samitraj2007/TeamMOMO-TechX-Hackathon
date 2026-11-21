@@ -6,6 +6,7 @@ import { Button, Callout, Field, Input, Select, TextArea } from "@/components/pr
 import { ApiError, errorMessage } from "@/lib/api";
 import { useHydrated } from "@/lib/hydrated";
 import { useHealth, useIngest } from "@/lib/queries";
+import { RunStatus } from "@/components/case/Resilience";
 import type { IngestIn } from "@/lib/types";
 
 const MEMO_MAX = 10_000;
@@ -146,9 +147,15 @@ export function IngestView() {
           ))}
         </div>
         <div className="border-t border-hairline pt-4 sm:col-span-2">
-          <Button type="submit" variant="solid" disabled={ingest.isPending}>
-            {ingest.isPending ? "Running…" : "Run this case"}
+          <Button type="submit" variant="solid" disabled={ingest.isPending || ingest.isSuccess}>
+            {ingest.isPending ? "Running…" : ingest.isSuccess ? "Opening the case…" : "Run this case"}
           </Button>
+          <RunStatus active={ingest.isPending} className="mt-2" />
+          {ingest.isSuccess && (
+            <p role="status" className="mt-2 text-xs text-muted">
+              Finished: {ingest.data.run.decision.route.replace("_", " ").toLowerCase()} · opening {ingest.data.alert_id}
+            </p>
+          )}
           {unmatched && <p className="mt-2 text-xs text-red-text">{errorMessage(ingest.error)}</p>}
         </div>
       </form>

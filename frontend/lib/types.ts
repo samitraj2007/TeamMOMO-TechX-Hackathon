@@ -15,8 +15,21 @@ export interface Health {
   investigator_model: string | null;
   investigator_live: boolean;
   backup_model: string | null;
+  backup_name?: string | null;
   cache_entries: number;
   threshold_aed: number;
+  llm_timeout_s?: number;
+  /** A staged resilience drill (POST /demo/fault), or null. */
+  fault_armed?: FaultArmed | null;
+}
+
+export type FaultMode = "timeout" | "slow" | "rate_limited";
+
+export interface FaultArmed {
+  mode: FaultMode;
+  remaining: number;
+  delay_s: number;
+  scope?: "main" | "all";
 }
 
 export interface CaseSummary {
@@ -235,7 +248,7 @@ export interface InvestigatorResult {
   usage: { prompt_tokens: number; completion_tokens: number; reasoning_tokens: number; total_tokens: number } | null;
   invalid_citations: string[];
   provider: string | null;
-  attempts: { provider: string; model: string; status: InvestigatorResult["status"]; duration_ms: number }[];
+  attempts: { provider: string; model: string; status: InvestigatorResult["status"]; duration_ms: number; injected?: boolean }[];
 }
 
 export interface CaseRun {
@@ -339,6 +352,48 @@ export interface EvalScorecard {
   fraud_routed_to_human: number;
   false_positives_auto_cleared: number;
   human_review: number;
+}
+
+export type FeedLane = "gate" | "review" | "ai";
+
+export interface FeedConfig {
+  total: number;
+  duration_s: number;
+  ai_per_min: number;
+}
+
+export interface FeedEvent {
+  alert_id: string;
+  txn_id: string;
+  ts: string;
+  amount: number;
+  currency: string;
+  lane: FeedLane;
+  /** Code-screen route for the human lanes; the full pipeline's route once the AI lane has run; null while queued. */
+  route: Route | null;
+  reasons: string[];
+  ai_status: "queued" | "done" | "failed" | null;
+}
+
+export interface FeedStatus {
+  state: "idle" | "running" | "draining" | "finished" | "stopped";
+  config: FeedConfig | null;
+  max_total: number;
+  started_at: string | null;
+  elapsed_s: number;
+  received: number;
+  rate_per_s: number;
+  lanes: Record<FeedLane, number>;
+  ai_queue: number;
+  ai_done: Record<Route, number>;
+  ai_failed: number;
+  dropped: number;
+  source: "llm" | "template";
+  sim_llm_enabled: boolean;
+  sim_calls: number;
+  sim_max_calls: number;
+  sim_failures: number;
+  events: FeedEvent[];
 }
 
 export interface IngestIn {

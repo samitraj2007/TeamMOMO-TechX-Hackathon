@@ -7,6 +7,7 @@ non-ok status, which the pipeline routes to human review.
 """
 
 import json
+import logging
 import time
 from datetime import datetime, timezone
 from typing import Annotated, Callable, Literal, NamedTuple, Protocol
@@ -15,6 +16,7 @@ import openai
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, ValidationError
 
 from backend.app.agents.cache import JsonCache, cache_key
+from backend.app.agents.faults import FaultSwitch, FaultyBackend, InjectedFault
 from backend.app.config import Settings
 from backend.app.schemas import Route
 from backend.app.security.classifier import backoff_seconds
@@ -108,6 +110,7 @@ class ProviderAttempt(BaseModel):
     model: str
     status: InvestigatorStatus
     duration_ms: int
+    injected: bool = False  # a staged demo fault (POST /demo/fault), never a real outage
 
 
 class InvestigatorResult(BaseModel):
@@ -228,6 +231,8 @@ class Provider(NamedTuple):
 # ---- the agent ----
 
 def _failure_status(e: Exception) -> InvestigatorStatus:
+    if isinstance(e, InjectedFault):
+        return e.status
     if isinstance(e, (openai.APITimeoutError, TimeoutError)):
         return "timeout"
     if isinstance(e, openai.RateLimitError):
@@ -302,7 +307,8 @@ class Investigator:
             except Exception as e:
                 status = _failure_status(e)
                 attempts.append(ProviderAttempt(provider=p.name, model=p.model, status=status,
-                                                duration_ms=round((time.perf_counter() - t1) * 1000)))
+                                                duration_ms=round((time.perf_counter() - t1) * 1000),
+                                                injected=isinstance(e, InjectedFault)))
                 if status in FAILOVER_STATUSES:
                     continue
                 return result(status, usage=usage, model=p.model, provider=p.name)
@@ -317,15 +323,30 @@ class Investigator:
         return result(status, usage=usage, model=attempts[0].model, provider=None)
 
 
+log = logging.getLogger(__name__)
+
+
 def build_backup(settings: Settings) -> Provider | None:
     if not (settings.backup_llm_model and settings.backup_llm_base_url):
+        return None
+    key = settings.backup_llm_api_key.strip()
+    if key and key == settings.groq_api_key.strip():
+        # Same key, same rate limit: it would fail exactly when the main provider does. Not a fallback.
+        log.warning("BACKUP_LLM_API_KEY equals GROQ_API_KEY; backup provider disabled")
         return None
     backend = ChatBackend(settings.backup_llm_model, settings.backup_llm_api_key, settings.backup_llm_base_url,
                           settings.llm_timeout_s, settings.backup_llm_reasoning_effort or None)
     return Provider(settings.backup_llm_name or "backup", settings.backup_llm_model, backend)
 
 
-def build_investigator(settings: Settings, cache: JsonCache, **backend_opts) -> Investigator:
+def build_investigator(settings: Settings, cache: JsonCache, faults: FaultSwitch | None = None,
+                       **backend_opts) -> Investigator:
     configured = settings.groq_api_key and settings.groq_model_main
-    return Investigator(settings, cache, GroqInvestigatorBackend(settings, **backend_opts) if configured else None,
-                        build_backup(settings))
+    main = GroqInvestigatorBackend(settings, **backend_opts) if configured else None
+    backup = build_backup(settings)
+    if faults is not None:
+        main = FaultyBackend(main, faults, settings.llm_timeout_s, last=backup is None) if main is not None else None
+        if backup is not None:
+            backup = Provider(backup.name, backup.model,
+                              FaultyBackend(backup.backend, faults, settings.llm_timeout_s, role="backup"))
+    return Investigator(settings, cache, main, backup)

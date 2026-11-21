@@ -9,6 +9,10 @@ import type {
   CaseTimeline,
   DecisionOut,
   EvalScorecard,
+  FaultArmed,
+  FaultMode,
+  FeedConfig,
+  FeedStatus,
   Filing,
   Health,
   IngestIn,
@@ -82,6 +86,13 @@ export const api = {
   },
   runTransaction: (txnId: string) => req<TransactionRun>(`/transactions/${txnId}/run`, post()),
   ingest: (body: IngestIn) => req<{ alert_id: string; txn_id: string; run: CaseRun }>("/cases/ingest", post(body)),
+  feedStatus: () => req<FeedStatus>("/feed/status"),
+  feedStart: (adminToken: string, config: FeedConfig) =>
+    req<FeedStatus>("/feed/start", { ...post(config), headers: { "X-Admin-Token": adminToken } }),
+  feedStop: (adminToken: string) =>
+    req<FeedStatus>("/feed/stop", { method: "POST", headers: { "X-Admin-Token": adminToken } }),
+  demoFault: (adminToken: string, mode: FaultMode | "off", scope: "main" | "all" = "main") =>
+    req<FaultArmed | null>("/demo/fault", { ...post({ mode, count: 1, scope }), headers: { "X-Admin-Token": adminToken } }),
   reset: (adminToken: string) =>
     req<{ status: string; counts: Record<string, number>; previous_audit_head: AuditVerify }>("/demo/reset", {
       method: "POST",

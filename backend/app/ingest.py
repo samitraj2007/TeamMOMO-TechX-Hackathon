@@ -38,8 +38,9 @@ def _next_number(conn: sqlite3.Connection) -> int:
                         ).fetchone()[0] + 1
 
 
-def store(conn: sqlite3.Connection, body: IngestIn) -> tuple[str, str]:
-    """Insert transaction, alert and a code-computed 24h velocity row. Returns (alert_id, txn_id)."""
+def store(conn: sqlite3.Connection, body: IngestIn, source: str = "api") -> tuple[str, str]:
+    """Insert transaction, alert and a code-computed 24h velocity row. Returns (alert_id, txn_id).
+    `source` names the sender in the audit entry (the public API, or the simulated bank feed)."""
     ts = (body.ts or datetime.now(timezone.utc)).astimezone(timezone.utc)
     n = _next_number(conn)
     txn_id, alert_id, vel_id = f"TXN-{n:05d}", f"ALT-{n:05d}", f"VEL-{n:05d}"
@@ -59,6 +60,6 @@ def store(conn: sqlite3.Connection, body: IngestIn) -> tuple[str, str]:
     audit.append(conn, alert_id, "INGEST", "API", {
         "txn_id": txn_id, "velocity_id": vel_id, "customer_id": body.customer_id, "device_id": body.device_id,
         "amount": body.amount, "currency": body.currency, "channel": body.channel,
-        "memo_chars": len(body.memo or ""), "payee_name_chars": len(body.payee_name or "")})
+        "memo_chars": len(body.memo or ""), "payee_name_chars": len(body.payee_name or ""), "source": source})
     conn.commit()
     return alert_id, txn_id

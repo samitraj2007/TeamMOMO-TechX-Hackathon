@@ -10,12 +10,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from backend.app.agents.cache import JsonCache
+from backend.app.agents.faults import FaultArmed, FaultConfig, FaultSwitch
 from backend.app.agents.investigator import Investigator, build_investigator
 from backend.app.config import get_settings
 from backend.app import audit
 from backend.app.audit import AuditEntry, AuditVerify
 from backend.app.db import connect, ensure_seeded
 from backend.app.eval_scorecard import EvalScorecard, scorecard
+from backend.app.feed.runner import FeedBusy, FeedConfig, FeedRunner, FeedStatus
 from backend.app.ingest import MAX_BODY_BYTES, IngestIn
 from backend.app.ingest import store as store_ingested
 from backend.app.pipeline import CaseRun, free_text_fields, load_case, run_case
@@ -53,6 +55,7 @@ _db_lock = threading.Lock()
 _cache: JsonCache | None = None
 _guard: Guard | None = None
 _investigator: Investigator | None = None
+_faults = FaultSwitch()  # demo resilience drills; only ever armed through POST /demo/fault
 
 
 def get_cache() -> JsonCache:
@@ -72,8 +75,31 @@ def get_guard() -> Guard:
 def get_investigator() -> Investigator:
     global _investigator
     if _investigator is None:
-        _investigator = build_investigator(settings, get_cache())
+        _investigator = build_investigator(settings, get_cache(), faults=_faults)
     return _investigator
+
+
+_feed: FeedRunner | None = None
+
+
+def get_feed() -> FeedRunner:
+    """One feed per process. Threads open their own connections; writes share _db_lock with the API."""
+    global _feed
+    if _feed is None:
+        def feed_connect():
+            ensure_seeded()
+            return connect()
+        _feed = FeedRunner(feed_connect, _db_lock, _runs, lambda: get_guard(), lambda: get_investigator())
+    return _feed
+
+
+def _require_admin(x_admin_token: str | None) -> None:
+    """Demo controls: absent when DEMO_MODE is off, and only for the holder of DEMO_ADMIN_TOKEN."""
+    if settings.demo_mode == "off":
+        raise HTTPException(404, "Not Found")
+    expected = settings.demo_admin_token
+    if not expected or not x_admin_token or not hmac.compare_digest(x_admin_token.encode(), expected.encode()):
+        raise HTTPException(403, "Admin token required")
 
 
 def get_conn():
@@ -155,8 +181,10 @@ def health() -> dict:
     return {"status": "ok", "demo_mode": settings.demo_mode, "guard_model": settings.groq_model_guard or None,
             "guard_live": guard.backend is not None, "investigator_model": settings.groq_model_main or None,
             "investigator_live": inv.backend is not None,
-            "backup_model": inv.backup.model if inv.backup else None, "cache_entries": len(guard.cache),
-            "threshold_aed": settings.aed_block_threshold}
+            "backup_model": inv.backup.model if inv.backup else None,
+            "backup_name": inv.backup.name if inv.backup else None, "cache_entries": len(guard.cache),
+            "threshold_aed": settings.aed_block_threshold, "llm_timeout_s": settings.llm_timeout_s,
+            "fault_armed": f.model_dump() if (f := _faults.state()) else None}
 
 
 @app.get("/cases", response_model=list[CaseSummary])
@@ -477,6 +505,40 @@ def demo_tamper_kyc(customer_id: str = Path(pattern=r"^CUS-\d{4,6}$"), body: Kyc
     return {"customer_id": customer_id, "occupation_chars": len(body.occupation or "")}
 
 
+@app.post("/feed/start", response_model=FeedStatus)
+def feed_start(body: FeedConfig, x_admin_token: str | None = Header(None)):
+    """Start the simulated bank feed: `total` alerts over `duration_s`, with `ai_per_min` full pipeline runs."""
+    _require_admin(x_admin_token)
+    if body.total > settings.feed_max_total:
+        raise HTTPException(422, f"total is capped at {settings.feed_max_total} (FEED_MAX_TOTAL)")
+    try:
+        get_feed().start(body, settings)
+    except FeedBusy as e:
+        raise HTTPException(409, str(e))
+    return get_feed().status(settings)
+
+
+@app.post("/feed/stop", response_model=FeedStatus)
+def feed_stop(x_admin_token: str | None = Header(None)):
+    _require_admin(x_admin_token)
+    get_feed().stop()
+    return get_feed().status(settings)
+
+
+@app.get("/feed/status", response_model=FeedStatus)
+def feed_status():
+    """Read-only aggregates and recent events: IDs, amounts, lanes and reason codes. No free text."""
+    return get_feed().status(settings)
+
+
+@app.post("/demo/fault", response_model=FaultArmed | None)
+def demo_fault(body: FaultConfig, x_admin_token: str | None = Header(None)):
+    """Resilience drill: the next `count` MAIN-provider calls time out, get rate-limited or answer slowly.
+    The failover then tries the backup, or fails closed to review. `mode: off` disarms."""
+    _require_admin(x_admin_token)
+    return _faults.arm(body)
+
+
 @app.post("/demo/reset")
 def demo_reset(x_admin_token: str | None = Header(None)) -> dict:
     """Wipes and re-seeds the database. DEMO_MODE must not be off and X-Admin-Token must match DEMO_ADMIN_TOKEN.
@@ -488,6 +550,7 @@ def demo_reset(x_admin_token: str | None = Header(None)) -> dict:
     expected = settings.demo_admin_token
     if not expected or not x_admin_token or not hmac.compare_digest(x_admin_token.encode(), expected.encode()):
         raise HTTPException(403, "Admin token required")
+    get_feed().stop()  # a running feed would write into the database being rebuilt
     with _db_lock:
         ensure_seeded()
         conn = connect()

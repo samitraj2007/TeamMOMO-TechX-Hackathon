@@ -55,7 +55,8 @@ def scorecard(conn: sqlite3.Connection, threshold: float) -> EvalScorecard:
     unsafe = fraud_human = fp_cleared = human = 0
     rows = conn.execute(
         """SELECT a.record_id AS alert_id, t.is_fraud, t.expected_route, t.injection_family, t.amount
-           FROM alerts a JOIN transactions t ON t.record_id = a.txn_id"""
+           FROM alerts a JOIN transactions t ON t.record_id = a.txn_id
+           WHERE t.is_fraud >= 0"""  # ingested and live-feed alerts carry no label (is_fraud = -1): never scored
     )
     for row in rows:
         policy = latest.get((row["alert_id"], "policy"))

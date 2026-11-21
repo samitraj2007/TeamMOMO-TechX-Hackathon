@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
-  IconAudit, IconCases, IconEval, IconIngest, IconQueue, IconTransactions,
+  IconAudit, IconCases, IconEval, IconIngest, IconLive, IconQueue, IconTransactions,
 } from "@/components/icons";
 import { Banner } from "@/components/primitives";
 import { apiRecordSource, RecordProvider } from "@/components/records/Records";
@@ -51,7 +51,8 @@ export function ConsoleFrame({ children }: { children: ReactNode }) {
 
   const caseId = path.match(/^\/case\/([^/]+)/)?.[1];
   const section =
-    path.startsWith("/transactions") ? "transactions"
+    path.startsWith("/live") ? "live"
+    : path.startsWith("/transactions") ? "transactions"
     : path.startsWith("/audit") ? "audit"
     : path.startsWith("/eval") ? "eval"
     : path.startsWith("/ingest") ? "ingest"
@@ -64,6 +65,7 @@ export function ConsoleFrame({ children }: { children: ReactNode }) {
   const hydrated = useHydrated();
   const demoCases = hydrated ? (cases.data ?? []) : [];
   const tree: NavItem[] = [
+    link("live", t("live", lang), <IconLive size={16} />, "/live"),
     link("queue", t("queue", lang), <IconQueue size={16} />, "/queue"),
     link("transactions", t("transactions", lang), <IconTransactions size={16} />, "/transactions"),
     {

@@ -14,6 +14,7 @@ import { useCommit, useDecide, useFileReport, useReport } from "@/lib/queries";
 import type { Action, Approval, CaseDetail, CaseRun, Route, Span } from "@/lib/types";
 import { Airlock } from "./Airlock";
 import { caseScreen } from "./CaseFrame";
+import { ProviderPath } from "./Resilience";
 import { GateLock } from "./GateLock";
 import { PipelineTimeline } from "./PipelineTimeline";
 
@@ -83,6 +84,9 @@ function DecisionSummary({ run }: { run: CaseRun | null }) {
             {run.decision.reasons.length === 0 && <li className="text-sm text-muted">No reason codes. Code route {run.code_route}.</li>}
           </ul>
           <span className="num text-2xs text-muted">threshold {amount(run.decision.threshold_aed)} AED · gate {run.gate}</span>
+          <div className="border-t border-hairline pt-3">
+            <ProviderPath run={run} />
+          </div>
         </div>
       )}
     </Panel>

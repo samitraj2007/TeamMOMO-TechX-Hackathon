@@ -224,6 +224,8 @@ Weakest, and the honest answer:
 |---|---|---|
 | Venue network | Live Groq calls fail | `DEMO_MODE=replay`, restart backend (`README.md`, `DEMO_SCRIPT.md`). Needs `backend/data/llm_cache.json` to already contain the case. |
 | `GROQ_API_KEY` | Live mode cannot fill a cache miss | Replay, or fail closed to `NEEDS_REVIEW`. |
+| Main Groq model slow, rate-limited or down | Investigator gets no answer | Gemini backup (`gemini-3.5-flash-lite`), verified 7/7 on 2026-11-21 with `scripts/check_backup.py`. If both fail: `ALL_PROVIDERS_FAILED` → Needs review. Re-run the check before the pitch; drills in `docs/ROUND3_RESILIENCE.md`. |
+| `GROQ_MODEL_MAIN` typo in `.env` (`openai/gpt-oss-120bea`, found 2026-11-21) | Every main call 404s; backup silently answers | Fix to `openai/gpt-oss-120b` and restart. |
 | Cache miss on a new ingest | Replay has nothing to serve | `test_replay_serves_known_case_offline_and_fails_closed_on_unseen`. Do not ingest a new case in replay if you need a model narrative. |
 | Guard score on B | 0.193, under 0.5 | Say so. Regex still flags. Do not retune 0.5 (`PHASE_PLAN.md`). |
 | Backend port 8000, frontend 3000 | UI cannot load | `README.md` commands. `scripts/smoke.py` is the terminal fallback (`DEMO_SCRIPT.md`). |

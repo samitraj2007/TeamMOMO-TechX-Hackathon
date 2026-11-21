@@ -42,6 +42,11 @@ export const IconAudit = (p: IconProps) => (
     <path d="M2.5 6h4v4h-4zM9.5 6h4v4h-4zM6.5 8h3" />
   </Icon>
 );
+export const IconLive = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M1.5 8h2.5l1.5-4 2.5 8 2-6 1.5 2h3" />
+  </Icon>
+);
 export const IconEval = (p: IconProps) => (
   <Icon {...p}>
     <path d="M3 13.5V9M6.5 13.5V5.5M10 13.5V7.5M13.5 13.5v-11M2 13.5h12" />

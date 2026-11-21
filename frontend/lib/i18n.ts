@@ -6,6 +6,7 @@ const STRINGS = {
   cases: { en: "Cases", ar: "الحالات" },
   audit: { en: "Audit", ar: "سجل التدقيق" },
   eval: { en: "Eval", ar: "التقييم" },
+  live: { en: "Live feed", ar: "البث المباشر" },
   ingest: { en: "Test your own case", ar: "اختبر حالتك" },
   memo: { en: "Memo", ar: "ملاحظة التحويل" },
   report: { en: "Report", ar: "التقرير" },

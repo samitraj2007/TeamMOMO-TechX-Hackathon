@@ -31,6 +31,15 @@ class Settings(BaseSettings):
     backup_llm_model: str = ""
     backup_llm_reasoning_effort: str = ""
 
+    # Live-feed simulator: plays the bank's legacy alerting system. It must use its OWN key, never groq_api_key;
+    # with no key (or the same key) it streams built-in template alerts instead.
+    sim_llm_api_key: str = ""
+    sim_llm_base_url: str = "https://api.groq.com/openai/v1"
+    sim_llm_model: str = "openai/gpt-oss-20b"
+    sim_llm_max_calls: int = 8
+    feed_max_total: int = 500
+    feed_ai_per_min: float = 4.0
+
     db_path: str = "backend/data/gulf_horizon_mini.sqlite"
     cache_path: str = "backend/data/llm_cache.json"
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"

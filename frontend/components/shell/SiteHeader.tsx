@@ -14,6 +14,7 @@ import { usePrefs, type DemoSpeed } from "@/lib/prefs";
 import { useHealth, useVerify } from "@/lib/queries";
 
 const NAV = [
+  { href: "/live", key: "live" },
   { href: "/queue", key: "queue" },
   { href: "/transactions", key: "transactions" },
   { href: "/audit", key: "audit" },
@@ -46,7 +47,7 @@ function usePastFold(): boolean {
   return useSyncExternalStore(onScroll, () => window.scrollY > window.innerHeight * 0.8, () => false);
 }
 
-const CONSOLE = ["/queue", "/transactions", "/case", "/audit", "/eval", "/ingest"];
+const CONSOLE = ["/live", "/queue", "/transactions", "/case", "/audit", "/eval", "/ingest"];
 
 /** One status inside the grouped status pill: a dot (filled when healthy) and a short label. */
 function Chip({ tone, title, children }: { tone: Tone; title?: string; children: string }) {
@@ -89,7 +90,9 @@ export function SiteHeader({ onOpenPalette }: { onOpenPalette: () => void }) {
       : h.demo_mode === "replay"
         ? { text: "Replay", tone: "amber", title: "Replay (cache only)" }
         : h.investigator_live
-          ? { text: "Groq", tone: "sage", title: "Groq live" }
+          ? h.backup_model
+            ? { text: "Groq + backup", tone: "sage", title: `Groq live · backup ${h.backup_name ?? ""} (${h.backup_model})` }
+            : { text: "Groq", tone: "sage", title: "Groq live · no backup provider: a failed call goes to human review" }
           : { text: h.backup_model ? "Backup" : "Offline", tone: "amber", title: h.backup_model ? "Backup model" : "Models offline" };
   const chain: { text: string; tone: Tone; title?: string } = !verify.data
     ? { text: "Chain …", tone: "muted" }
@@ -184,6 +187,11 @@ export function SiteHeader({ onOpenPalette }: { onOpenPalette: () => void }) {
           <Chip tone={provider.tone} title={provider.title}>{provider.text}</Chip>
           <span aria-hidden className="h-3.5 w-px bg-hairline" />
           <Chip tone={chain.tone} title={chain.title}>{chain.text}</Chip>
+          {h?.fault_armed && (
+            <Chip tone="amber" title={`Resilience drill: the next ${h.fault_armed.remaining} main-model call(s) ${h.fault_armed.mode.replace("_", " ")}`}>
+              Drill armed
+            </Chip>
+          )}
         </div>
         <SegmentedTabs<"en" | "ar">
           size="sm"

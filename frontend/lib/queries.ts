@@ -14,7 +14,16 @@ export const keys = {
   caseAudit: (id: string) => ["case", id, "audit"] as const,
   record: (id: string) => ["record", id] as const,
   transactions: ["transactions"] as const,
+  feed: ["feed"] as const,
 };
+
+/** Fast polling while a feed runs or drains; slow otherwise. */
+export const useFeedStatus = () =>
+  useQuery({
+    queryKey: keys.feed,
+    queryFn: api.feedStatus,
+    refetchInterval: (q) => (q.state.data?.state === "running" || q.state.data?.state === "draining" ? 1_500 : 10_000),
+  });
 
 export const useHealth = () => useQuery({ queryKey: keys.health, queryFn: api.health, refetchInterval: 15_000 });
 export const useVerify = () =>

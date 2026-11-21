@@ -10,6 +10,7 @@ import {
 import { api } from "@/lib/api";
 import { cx } from "@/lib/cx";
 import { useCase, useReport, useRunCase, useTimeline } from "@/lib/queries";
+import { RunStatus } from "./Resilience";
 import type { CaseDetail, CaseTimeline, Report } from "@/lib/types";
 
 export interface CaseData {
@@ -115,10 +116,12 @@ function CaseHeader({ id, detail, onRan }: { id: string; detail: CaseDetail; onR
           </Button>
         </div>
       </header>
+      <RunStatus active={runMut.isPending} className="-mt-1" />
       {runMut.isError && <ErrorState error={runMut.error} onRetry={() => runMut.mutate(undefined, { onSuccess: onRan })} />}
-      {run && run.investigator.status !== "ok" && (
-        <Callout kind="warn" title="Failed closed">
-          Investigator status {run.investigator.status}. The route was not loosened.
+      {run && run.investigator.status !== "ok" && run.investigator.status !== "citation_invalid" && (
+        <Callout kind="warn" title="Failed closed to human review">
+          No model gave a usable answer ({run.investigator.attempts.map((a) => `${a.provider} ${a.status.replace("_", " ")}`).join(", ") || run.investigator.status.replace("_", " ")}).
+          Code did not loosen the route; a person decides this case.
         </Callout>
       )}
     </>
