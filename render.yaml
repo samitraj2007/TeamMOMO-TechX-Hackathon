@@ -1,0 +1,25 @@
+# Render Blueprint — production API from branch main (free web service).
+services:
+  - type: web
+    name: momo-sentinel-api
+    runtime: python
+    plan: free
+    branch: main
+    autoDeploy: true
+    buildCommand: pip install --upgrade pip && pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: APP_ENV
+        value: prod
+      - key: DEMO_MODE
+        value: replay
+      - key: DB_PATH
+        value: backend/data/gulf_horizon_mini.sqlite
+      - key: CACHE_PATH
+        value: backend/data/llm_cache.json
+      # Set to your Vercel URL: https://YOUR-PROJECT.vercel.app,http://localhost:3000
+      - key: CORS_ORIGINS
+        sync: false

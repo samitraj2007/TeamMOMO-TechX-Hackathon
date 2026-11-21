@@ -26,6 +26,8 @@ export function DataTable<T>({
   columns,
   rowKey,
   rowTone,
+  rowClassName,
+  animateRows = false,
   onRowActivate,
   height = 480,
   label,
@@ -36,6 +38,10 @@ export function DataTable<T>({
   columns: Column<T>[];
   rowKey: (row: T) => string;
   rowTone?: (row: T) => Tone | null;
+  /** Extra classes per row, e.g. a one-time highlight for rows that just arrived. */
+  rowClassName?: (row: T) => string | undefined;
+  /** Rows glide to their new position when rows are inserted above them (transform only). */
+  animateRows?: boolean;
   onRowActivate?: (row: T) => void;
   height?: number;
   label: string;
@@ -99,10 +105,12 @@ export function DataTable<T>({
                   tabIndex={onRowActivate ? (index === 0 ? 0 : -1) : undefined}
                   onClick={onRowActivate ? () => onRowActivate(row) : undefined}
                   onKeyDown={(e) => onKey(e, index, row)}
-                  style={{ ...template, top: index * ROW, height: ROW }}
+                  style={animateRows ? { ...template, top: 0, height: ROW, transform: `translate3d(0, ${index * ROW}px, 0)` } : { ...template, top: index * ROW, height: ROW }}
                   className={cx(
-                    "absolute inset-x-0 grid items-center border-b border-hairline/60 ps-4 pe-3 text-sm outline-none transition-colors duration-150",
+                    "absolute inset-x-0 grid items-center border-b border-hairline/60 ps-4 pe-3 text-sm outline-none",
                     onRowActivate && "cursor-pointer hover:bg-raised focus-visible:bg-raised focus-visible:outline-offset-[-2px]",
+                    animateRows ? "transition-[transform,background-color] duration-300 ease-out" : "transition-colors duration-150",
+                    rowClassName?.(row),
                   )}
                 >
                   {tone && <span aria-hidden className={cx("absolute inset-y-2.5 start-1.5 w-[3px] rounded-full", TONE_BG[tone])} />}

@@ -187,7 +187,7 @@ export interface Approval {
   alert_id: string;
   actor: string;
   role: Role;
-  decision: "APPROVE" | "REJECT" | "MORE_INFO";
+  decision: "APPROVE" | "REJECT" | "MORE_INFO" | "ESCALATE";
   action: Action | null;
   override: boolean;
   reason: string;
@@ -356,10 +356,13 @@ export interface EvalScorecard {
 
 export type FeedLane = "gate" | "review" | "ai";
 
+export type FeedKind = "benign" | "high_value" | "hostile_memo" | "odd_device" | "foreign_currency";
+
 export interface FeedConfig {
   total: number;
   duration_s: number;
   ai_per_min: number;
+  mix?: Partial<Record<FeedKind, number>> | null;
 }
 
 export interface FeedEvent {
@@ -394,6 +397,18 @@ export interface FeedStatus {
   sim_max_calls: number;
   sim_failures: number;
   events: FeedEvent[];
+  history?: FeedRunSummary[];
+}
+
+export interface FeedRunSummary {
+  started_at: string;
+  state: "finished" | "stopped";
+  config: FeedConfig;
+  received: number;
+  elapsed_s: number;
+  lanes: Record<FeedLane, number>;
+  ai_done: Record<Route, number>;
+  ai_left_queued: number;
 }
 
 export interface IngestIn {
@@ -413,6 +428,81 @@ export interface IngestIn {
 export interface DecisionOut {
   approval: Approval;
   resolution: Resolution | null;
-  status: "COMMITTED" | "REJECTED" | "AWAITING_INFO";
+  status: "COMMITTED" | "REJECTED" | "AWAITING_INFO" | "ESCALATED";
   override: boolean;
+}
+
+// ---- case records, storage and notifications ----
+
+export type CaseOrigin = "demo" | "api" | "feed" | "drill" | "manual" | "dataset";
+export type CaseStatus = "not_routed" | "open" | "resolved" | "filed";
+
+export interface CaseRecord {
+  alert_id: string;
+  txn_id: string;
+  origin: CaseOrigin;
+  demo_tag: string | null;
+  rule_id: string;
+  amount: number;
+  currency: string;
+  customer_id: string;
+  raised_at: string | null;
+  route: Route | null;
+  status: CaseStatus;
+  has_run: boolean;
+  audit_entries: number;
+  last_activity: string | null;
+  decided_by: string | null;
+  filed: boolean;
+}
+
+export interface CaseSearch {
+  total: number;
+  counts: Partial<Record<CaseOrigin, number>>;
+  items: CaseRecord[];
+}
+
+export interface StorageInfo {
+  database: string;
+  bytes: number;
+  schema_version: number;
+  tables: Record<string, number>;
+  note: string;
+}
+
+export interface AppNotification {
+  seq: number;
+  record_id: string;
+  ts: string;
+  alert_id: string | null;
+  type: "approval_needed" | "failed_closed" | "decision" | "filed" | "refused";
+  severity: "high" | "warn" | "info";
+  title: string;
+}
+
+export interface Notifications {
+  head_seq: number;
+  events: AppNotification[];
+}
+
+// ---- case lifecycle (who may act next) ----
+
+export type LifecycleWho = "ANALYST" | "COMPLIANCE_OFFICER" | "CODE";
+export interface LifecycleStep {
+  id: "investigated" | "analyst_review" | "officer_approval" | "filed";
+  label: string;
+  state: "done" | "current" | "upcoming" | "skipped" | "not_needed";
+  who_can_act: LifecycleWho | null;
+  note: string | null;
+  by: string | null;
+  ts: string | null;
+  record_id: string | null;
+}
+export interface Lifecycle {
+  alert_id: string;
+  route: Route | null;
+  officer_required: boolean;
+  escalated_by: string[];
+  next_action_role: LifecycleWho | null;
+  steps: LifecycleStep[];
 }

@@ -53,7 +53,18 @@ CREATE TRIGGER audit_log_no_delete BEFORE DELETE ON audit_log
 BEGIN SELECT RAISE(ABORT, 'audit_log is append-only'); END;
 PRAGMA user_version = 5;
 """
+# case_runs is added below with IF NOT EXISTS, so existing databases gain it without a version bump (no reseed).
+
+# Investigation results, kept so reports and evidence packs survive a backend restart. Derived data: the audit log
+# remains the record of what happened; a stored run is the snapshot the report is built from.
+RUNS_SCHEMA = """
+CREATE TABLE IF NOT EXISTS case_runs (
+  alert_id TEXT PRIMARY KEY, ts TEXT NOT NULL, route TEXT NOT NULL, inv_status TEXT NOT NULL, run_json TEXT NOT NULL
+);
+"""
+SCHEMA = SCHEMA + RUNS_SCHEMA
 SCHEMA_VERSION = 5
+_migrated: set[str] = set()
 
 
 def connect(path: Path | None = None) -> sqlite3.Connection:
@@ -69,6 +80,14 @@ def ensure_seeded(path: Path | None = None) -> Path:
     path = path or get_settings().db_file
     if not path.exists() or _version(path) != SCHEMA_VERSION:
         generate(path)
+        _migrated.discard(str(path))
+    if str(path) not in _migrated:
+        conn = sqlite3.connect(path)
+        try:
+            conn.executescript(RUNS_SCHEMA)
+        finally:
+            conn.close()
+        _migrated.add(str(path))
     return path
 
 

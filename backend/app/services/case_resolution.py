@@ -12,6 +12,7 @@ from backend.app.schemas import ACTION_SEVERITY, Action, Approval, Resolution, R
 from backend.app.services.sanctions import check_sanctions_watchlist
 
 OVERRIDE_MIN_REASON = 20
+MIN_REASON = 3
 
 
 class ApprovalRequired(PermissionError):
@@ -76,9 +77,15 @@ def record_approval(conn: sqlite3.Connection, alert_id: str, actor: str, decisio
     return approval
 
 
+def escalated_by(conn: sqlite3.Connection, alert_id: str) -> set[str]:
+    """Lower-cased names of everyone who escalated this case to a compliance officer (four-eyes check)."""
+    rows = conn.execute("SELECT actor FROM approvals WHERE alert_id = ? AND decision = 'ESCALATE'", (alert_id,))
+    return {r["actor"].lower() for r in rows}
+
+
 def latest_approval(conn: sqlite3.Connection, alert_id: str) -> Approval | None:
-    row = conn.execute("SELECT * FROM approvals WHERE alert_id = ? ORDER BY record_id DESC LIMIT 1",
-                       (alert_id,)).fetchone()
+    row = conn.execute("SELECT * FROM approvals WHERE alert_id = ? AND decision != 'ESCALATE' "
+                       "ORDER BY record_id DESC LIMIT 1", (alert_id,)).fetchone()
     return Approval(**{**dict(row), "override": bool(row["override"])}) if row else None
 
 
@@ -125,6 +132,8 @@ def _commit(conn: sqlite3.Connection, alert_id: str, route: Route, action: str, 
     if (route == Route.PENDING_APPROVAL or facts["high_value"] or facts["watchlist_hit"]) and not by_officer:
         raise ApprovalRequired(f"{alert_id}: high-value or watchlist case requires a recorded compliance officer "
                                f"approval")
+    if escalated_by(conn, alert_id) and not by_officer:
+        raise ApprovalRequired(f"{alert_id}: escalated case requires a recorded compliance officer approval")
     if action == "HOLD_AND_BLOCK" and not by_officer:
         raise ApprovalRequired(f"{alert_id}: blocking requires a recorded compliance officer approval")
     if (route == Route.NEEDS_REVIEW or facts["watchlist_possible"]) and not approved:

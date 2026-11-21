@@ -62,5 +62,6 @@ def screen_case(conn: sqlite3.Connection, alert_id: str, threshold: float) -> Sc
     audit.append(conn, alert_id, "STEP", "CODE", {
         "step": "screen", "status": "FLAGGED" if route else "DONE", "summary": summary,
         "duration_ms": round((time.perf_counter() - t0) * 1000, 3), "lane": lane, "reasons": reasons,
+        "route": route.value if route else None,
         "signals": signals, "txn_id": txn["record_id"], "record_ids": ev.record_ids})
     return Screen(alert_id=alert_id, lane=lane, route=route, reasons=reasons, record_ids=ev.record_ids)

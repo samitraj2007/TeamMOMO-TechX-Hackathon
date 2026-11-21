@@ -12,7 +12,7 @@ import time
 from collections.abc import Callable
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 FaultMode = Literal["timeout", "slow", "rate_limited", "off"]
 FaultScope = Literal["main", "all"]  # "all" = a full outage: the backup provider fails the same way
@@ -24,6 +24,12 @@ class FaultConfig(BaseModel):
     count: int = Field(default=1, ge=1, le=3, description="Main-provider calls affected before auto-disarm")
     delay_s: float = Field(default=6.0, ge=0.5, le=30, description="Delay for mode=slow")
     scope: FaultScope = "main"
+
+    @model_validator(mode="after")
+    def _slow_stays_under_the_limit(self):
+        if self.mode == "slow" and self.delay_s > 9.5:
+            raise ValueError("a slow drill must stay under the 10 s timeout; use mode=timeout for a failure")
+        return self
 
 
 class FaultArmed(BaseModel):

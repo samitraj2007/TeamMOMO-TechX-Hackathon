@@ -10,6 +10,8 @@ import {
 import { api } from "@/lib/api";
 import { cx } from "@/lib/cx";
 import { useCase, useReport, useRunCase, useTimeline } from "@/lib/queries";
+import { DownloadMenu } from "./DownloadMenu";
+import { LifecycleStepper } from "./Lifecycle";
 import { RunStatus } from "./Resilience";
 import type { CaseDetail, CaseTimeline, Report } from "@/lib/types";
 
@@ -111,12 +113,14 @@ function CaseHeader({ id, detail, onRan }: { id: string; detail: CaseDetail; onR
         </div>
         <div className="ms-auto flex flex-wrap items-center gap-2">
           <RouteTag route={run?.decision.route ?? s.last_route} size="lg" />
+          <DownloadMenu alertId={id} hasRun={!!run} />
           <Button variant="solid" disabled={runMut.isPending} onClick={() => runMut.mutate(undefined, { onSuccess: onRan })}>
             {runMut.isPending ? "Running…" : run ? "Run again" : "Run investigation"}
           </Button>
         </div>
       </header>
       <RunStatus active={runMut.isPending} className="-mt-1" />
+      <LifecycleStepper id={id} />
       {runMut.isError && <ErrorState error={runMut.error} onRetry={() => runMut.mutate(undefined, { onSuccess: onRan })} />}
       {run && run.investigator.status !== "ok" && run.investigator.status !== "citation_invalid" && (
         <Callout kind="warn" title="Failed closed to human review">

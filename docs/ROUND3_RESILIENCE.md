@@ -31,7 +31,14 @@ Every provider attempt is in the audit log: provider, status, duration, and whet
 - **Key guard:** a backup key that equals `GROQ_API_KEY` is refused at startup. A shared rate limit is not a fallback.
 
 ## Controlled failure drills (demo mode only)
-`POST /demo/fault` needs `X-Admin-Token`, and returns 404 when demo mode is off. You can also use the **Resilience drill** panel on `/live`. A drill affects the next investigation only, then disarms itself.
+`POST /demo/fault` needs `X-Admin-Token`, and returns 404 with "Demo controls are off" when demo mode is off.
+
+The **Resilience drill** screen (`/drill`, in the sidebar) is the easy way:
+1. Pick a failure, the providers affected, the slow delay and how many investigations to affect.
+2. Pick a test case (benign, hostile memo or high value).
+3. Press **Arm and run test case**.
+
+The result stays on the screen: route, Model path and reason codes, with a link to the case. A drill log records every drill run in this tab. **Arm only** arms the drill so you can trigger it from any other screen. A drill affects only the next N investigations, then disarms itself.
 
 | Drill | Effect | Expected result |
 |---|---|---|
@@ -76,3 +83,7 @@ Event 2's `main unavailable` was a **real** failure: `GROQ_MODEL_MAIN` in `.env`
 - **Rate limits:** free-tier limits on both keys cap sustained AI throughput at a few investigations per minute. The live feed's code screen is not limited.
 - **No queue:** a timed-out case is not retried automatically later. A person can press **Run again**.
 - **Drill state:** drills live in memory per process, so a restart clears them.
+
+## Records and exports
+
+Drill and feed cases are stored like real cases. Find them in **Case records** (`/records`), filtered by source "Drills" or "Live feed". See [RECORDS_AND_EXPORTS.md](RECORDS_AND_EXPORTS.md) for evidence packs, audit exports and notifications.

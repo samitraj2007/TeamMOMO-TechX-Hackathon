@@ -149,10 +149,14 @@ class BankFeedGenerator:
     """Seed pool plus deterministic expansion. Not thread-safe: one feed thread owns it."""
 
     def __init__(self, settings: Settings, roster: list[tuple[str, str]], seed: int = 2026,
-                 model: SimModel | None = None, now: Callable[[], datetime] = lambda: datetime.now(timezone.utc)):
+                 model: SimModel | None = None, now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+                 mix: dict[str, int] | None = None):
         if not roster:
             raise ValueError("the simulated bank needs at least one customer with a verified device")
         self.rng = random.Random(seed)
+        self.mix = {k: (mix if mix is not None else MIX).get(k, 0) for k in KINDS}
+        if sum(self.mix.values()) <= 0:
+            raise ValueError("the traffic mix needs at least one kind with a positive weight")
         self.now = now
         self.max_calls = settings.sim_llm_max_calls
         self.model = model if model is not None else (SimModel(settings) if sim_llm_enabled(settings) else None)
@@ -191,7 +195,7 @@ class BankFeedGenerator:
 
     def _pick_seed(self) -> Seed:
         pool = self.llm_seeds or TEMPLATE_SEEDS
-        kind = self.rng.choices(KINDS, weights=[MIX[k] for k in KINDS])[0]
+        kind = self.rng.choices(KINDS, weights=[self.mix[k] for k in KINDS])[0]
         of_kind = [s for s in pool if s.kind == kind] or [s for s in TEMPLATE_SEEDS if s.kind == kind]
         return self.rng.choice(of_kind)
 

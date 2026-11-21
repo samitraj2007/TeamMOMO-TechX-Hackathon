@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
-  IconAudit, IconCases, IconEval, IconIngest, IconLive, IconQueue, IconTransactions,
+  IconAudit, IconCases, IconDrill, IconEval, IconIngest, IconLive, IconQueue, IconRecords, IconTransactions,
 } from "@/components/icons";
 import { Banner } from "@/components/primitives";
 import { apiRecordSource, RecordProvider } from "@/components/records/Records";
@@ -52,8 +52,10 @@ export function ConsoleFrame({ children }: { children: ReactNode }) {
   const caseId = path.match(/^\/case\/([^/]+)/)?.[1];
   const section =
     path.startsWith("/live") ? "live"
+    : path.startsWith("/drill") ? "drill"
     : path.startsWith("/transactions") ? "transactions"
     : path.startsWith("/audit") ? "audit"
+    : path.startsWith("/records") ? "records"
     : path.startsWith("/eval") ? "eval"
     : path.startsWith("/ingest") ? "ingest"
     : path.startsWith("/case") ? "cases"
@@ -81,9 +83,11 @@ export function ConsoleFrame({ children }: { children: ReactNode }) {
         status: c.last_route ? ROUTE_TONE[c.last_route] : undefined,
       })),
     },
+    link("records", t("records", lang), <IconRecords size={16} />, "/records"),
     link("audit", t("audit", lang), <IconAudit size={16} />, "/audit"),
     link("eval", t("eval", lang), <IconEval size={16} />, "/eval"),
     link("ingest", t("ingest", lang), <IconIngest size={16} />, "/ingest"),
+    link("drill", t("drill", lang), <IconDrill size={16} />, "/drill"),
   ];
 
   const openIds = [caseId, ...demoCases.slice(0, 3).map((c) => c.alert_id)].filter((id): id is string => !!id && !closed.includes(id));

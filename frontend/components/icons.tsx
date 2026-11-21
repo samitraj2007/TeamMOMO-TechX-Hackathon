@@ -47,6 +47,12 @@ export const IconLive = (p: IconProps) => (
     <path d="M1.5 8h2.5l1.5-4 2.5 8 2-6 1.5 2h3" />
   </Icon>
 );
+export const IconDrill = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M8 1.5 2.5 3.5v4c0 3.2 2.3 5.6 5.5 7 3.2-1.4 5.5-3.8 5.5-7v-4L8 1.5Z" />
+    <path d="M8.6 4.8 6.6 8.2h2.8l-2 3" />
+  </Icon>
+);
 export const IconEval = (p: IconProps) => (
   <Icon {...p}>
     <path d="M3 13.5V9M6.5 13.5V5.5M10 13.5V7.5M13.5 13.5v-11M2 13.5h12" />
@@ -170,5 +176,16 @@ export const IconHash = (p: IconProps) => (
 export const IconReset = (p: IconProps) => (
   <Icon {...p}>
     <path d="M13 8A5 5 0 1 1 11.5 4.5M13 2.5v3h-3" />
+  </Icon>
+);
+export const IconRecords = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="2.5" y="2.5" width="11" height="3.5" rx="1" />
+    <path d="M3.5 6v6.5a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V6M6.5 8.75h3" />
+  </Icon>
+);
+export const IconBell = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M4 11.5V7.25a4 4 0 0 1 8 0v4.25l1 1H3l1-1ZM6.5 13.5a1.5 1.5 0 0 0 3 0" />
   </Icon>
 );

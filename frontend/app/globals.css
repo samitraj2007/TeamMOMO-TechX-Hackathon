@@ -380,6 +380,57 @@ body {
   animation: momo-fade 220ms var(--ease-out) both;
 }
 
+/* Live feed and drill. Transform/opacity only (dash offsets are paint-only on a few SVG paths).
+   The reduced-motion block below stops all of it. */
+@keyframes momo-belt {
+  from { transform: translate3d(-16px, 0, 0); }
+  to { transform: translate3d(0, 0, 0); }
+}
+.belt-run { animation: momo-belt 600ms linear infinite; }
+
+@keyframes momo-sweep {
+  0%, 100% { transform: translate3d(0, -28px, 0); opacity: 0; }
+  15%, 85% { opacity: 1; }
+  50% { transform: translate3d(0, 28px, 0); }
+}
+.scan-sweep { animation: momo-sweep 1400ms cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+
+@keyframes momo-fresh {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+.row-fresh::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--color-sage) 12%, transparent);
+  animation: momo-fresh 1400ms ease-out both;
+  pointer-events: none;
+}
+
+@keyframes momo-wire {
+  to { stroke-dashoffset: -20; }
+}
+.wire-live { stroke-dasharray: 6 4; animation: momo-wire 500ms linear infinite; }
+
+@keyframes momo-spin {
+  to { transform: rotate(360deg); }
+}
+.spin { animation: momo-spin 900ms linear infinite; }
+.spin-slow { animation: momo-spin 2600ms cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+
+@keyframes momo-blink {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+.blink { animation: momo-blink 1200ms ease-in-out infinite; }
+
+@keyframes momo-ping {
+  from { transform: scale(1); opacity: 0.6; }
+  to { transform: scale(2.4); opacity: 0; }
+}
+.ping { animation: momo-ping 1400ms cubic-bezier(0, 0, 0.2, 1) infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

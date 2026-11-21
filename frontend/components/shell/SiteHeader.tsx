@@ -7,6 +7,7 @@ import { useSyncExternalStore } from "react";
 import { MomoLockup } from "@/components/brand/MomoLockup";
 import { IconSearch } from "@/components/icons";
 import { SegmentedTabs } from "@/components/primitives";
+import { NotificationBell } from "@/components/shell/NotificationBell";
 import { cx } from "@/lib/cx";
 import { t } from "@/lib/i18n";
 import { TONE_BG, type Tone } from "@/lib/labels";
@@ -17,9 +18,11 @@ const NAV = [
   { href: "/live", key: "live" },
   { href: "/queue", key: "queue" },
   { href: "/transactions", key: "transactions" },
+  { href: "/records", key: "records" },
   { href: "/audit", key: "audit" },
   { href: "/eval", key: "eval" },
   { href: "/ingest", key: "ingest" },
+  { href: "/drill", key: "drill" },
 ] as const;
 
 const subscribePath = () => () => {};
@@ -47,7 +50,7 @@ function usePastFold(): boolean {
   return useSyncExternalStore(onScroll, () => window.scrollY > window.innerHeight * 0.8, () => false);
 }
 
-const CONSOLE = ["/live", "/queue", "/transactions", "/case", "/audit", "/eval", "/ingest"];
+const CONSOLE = ["/live", "/drill", "/queue", "/transactions", "/case", "/audit", "/eval", "/ingest", "/records"];
 
 /** One status inside the grouped status pill: a dot (filled when healthy) and a short label. */
 function Chip({ tone, title, children }: { tone: Tone; title?: string; children: string }) {
@@ -181,7 +184,7 @@ export function SiteHeader({ onOpenPalette }: { onOpenPalette: () => void }) {
 
       {!quiet && (
       <div className="ms-auto flex shrink-0 items-center gap-2.5">
-        <div role="group" aria-label="System status" className="flex h-8 items-center rounded-full border border-hairline bg-surface px-1 shadow-sheen">
+        <div role="group" aria-label="System status" className="hidden h-8 items-center md:flex rounded-full border border-hairline bg-surface px-1 shadow-sheen">
           <Chip tone={backend.tone}>{backend.text}</Chip>
           <span aria-hidden className="h-3.5 w-px bg-hairline" />
           <Chip tone={provider.tone} title={provider.title}>{provider.text}</Chip>
@@ -193,6 +196,8 @@ export function SiteHeader({ onOpenPalette }: { onOpenPalette: () => void }) {
             </Chip>
           )}
         </div>
+        <NotificationBell />
+        <span className="hidden sm:contents">
         <SegmentedTabs<"en" | "ar">
           size="sm"
           label="Language"
@@ -208,6 +213,7 @@ export function SiteHeader({ onOpenPalette }: { onOpenPalette: () => void }) {
           onChange={(v) => setDemoSpeed(Number(v) as DemoSpeed)}
           options={[{ value: "0.5", label: "0.5×" }, { value: "1", label: "1×" }, { value: "2", label: "2×" }]}
         />
+        </span>
       </div>
       )}
     </header>

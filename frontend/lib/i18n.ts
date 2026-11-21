@@ -8,6 +8,8 @@ const STRINGS = {
   eval: { en: "Eval", ar: "التقييم" },
   live: { en: "Live feed", ar: "البث المباشر" },
   ingest: { en: "Test your own case", ar: "اختبر حالتك" },
+  drill: { en: "Resilience drill", ar: "اختبار المرونة" },
+  records: { en: "Case records", ar: "سجل الحالات" },
   memo: { en: "Memo", ar: "ملاحظة التحويل" },
   report: { en: "Report", ar: "التقرير" },
   neutralized: { en: "neutralized", ar: "تم تحييده" },

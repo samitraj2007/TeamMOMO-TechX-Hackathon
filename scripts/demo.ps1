@@ -3,6 +3,13 @@
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 
+# Windows lets several servers bind 8000; requests then reach an old one. Refuse to start a second backend.
+$busy = Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue
+if ($busy) {
+  $ids = ($busy | Select-Object -ExpandProperty OwningProcess -Unique) -join ', '
+  throw "Port 8000 is already in use (PID $ids). Stop that backend first (Stop-Process -Id <pid>), including any orphaned 'multiprocessing.spawn' python workers, then rerun."
+}
+
 Write-Host "Building frontend (production)..."
 Push-Location frontend
 npm run build

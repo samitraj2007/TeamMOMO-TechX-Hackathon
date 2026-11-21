@@ -22,9 +22,20 @@ Code escalations are final because a model can only tighten a route, never loose
 
 | Call | Notes |
 |---|---|
-| `POST /feed/start` `{"total": 200, "duration_s": 240, "ai_per_min": 4}` | Needs `X-Admin-Token`. `total` is capped by `FEED_MAX_TOTAL` (default 500); `duration_s` must be 30 to 600 and `ai_per_min` 0 to 30. |
+| `POST /feed/start` `{"total": 25, "duration_s": 30, "ai_per_min": 2, "mix": {"benign": 40, "hostile_memo": 45, ...}}` | Needs `X-Admin-Token`. `total` is capped by `FEED_MAX_TOTAL` (default 500); `duration_s` must be 10 to 600, `ai_per_min` 0 to 30, and each `mix` weight 0 to 100 (optional; the default is a normal day). |
 | `POST /feed/stop` | Needs `X-Admin-Token`. Queued cases stay unrouted. |
-| `GET /feed/status` | Counts, lanes, rate and the last 200 events: IDs, amounts and reason codes only, never memo or payee text. |
+| `GET /feed/status` | Counts, lanes, rate, the last 200 events (IDs, amounts and reason codes only, never memo or payee text) and the last 5 finished runs. |
+| `GET /demo/check` | Checks the admin token; changes nothing. |
+
+**The `/live` screen:**
+- **Left, Feed setup:**
+  - **Alerts:** a number, with quick picks 10, 25, 50, 100 and 200.
+  - **Over:** 10 s to 10 min, with quick picks 15 s, 30 s, 1 min, 2 min and 4 min.
+  - **AI lane:** runs per minute.
+  - **Traffic mix:** Normal day, Attack wave, High-value burst or Clean traffic, or your own weight per kind.
+  - **Admin token:** entered once per tab, and shared with the Resilience drill screen.
+- **Right:** the live monitor.
+- **Below:** the alert table and recent runs.
 
 `/demo/reset` stops a running feed before it rebuilds the database. Feed alerts are unlabelled, so `/eval` never scores them.
 
@@ -40,7 +51,7 @@ Code escalations are final because a model can only tighten a route, never loose
 
 ## Running it in the 7-minute pitch
 1. Reset with the admin token, then open `/live`.
-2. Start **200 alerts over 4 min** with the AI lane at **4/min**.
+2. Start **25–50 alerts over 30 s** with **Attack wave** and the AI lane at **2–4/min**.
 3. As the lanes fill, point out:
    - code handled every alert instantly;
    - gate and review cases went straight to a person;

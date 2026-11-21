@@ -78,7 +78,7 @@ class Approval(BaseModel):
     alert_id: str
     actor: str
     role: Literal["ANALYST", "COMPLIANCE_OFFICER"]
-    decision: Literal["APPROVE", "REJECT", "MORE_INFO"]
+    decision: Literal["APPROVE", "REJECT", "MORE_INFO", "ESCALATE"]
     action: Action | None = None
     override: bool = False
     reason: str = Field(min_length=3)

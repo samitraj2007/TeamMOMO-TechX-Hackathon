@@ -1,4 +1,5 @@
 import hmac
+import json
 import logging
 import threading
 from datetime import datetime, timezone
@@ -7,6 +8,7 @@ from typing import Literal
 from fastapi import Body, Depends, FastAPI, Header, HTTPException, Path, Query, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, PlainTextResponse, Response, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from backend.app.agents.cache import JsonCache
@@ -16,6 +18,10 @@ from backend.app.config import get_settings
 from backend.app import audit
 from backend.app.audit import AuditEntry, AuditVerify
 from backend.app.db import connect, ensure_seeded
+from backend.app import exports, records
+from backend.app.records import CaseRecord, CaseSearch, Notifications, Storage
+from backend.app.runs import RunStore
+from backend.app.lifecycle import Lifecycle, lifecycle, recorded_route
 from backend.app.eval_scorecard import EvalScorecard, scorecard
 from backend.app.feed.runner import FeedBusy, FeedConfig, FeedRunner, FeedStatus
 from backend.app.ingest import MAX_BODY_BYTES, IngestIn
@@ -26,7 +32,7 @@ from backend.app.schemas import Action, Approval, Resolution, Route
 from backend.app.security.classifier import Guard, build_guard
 from backend.app.services.case_resolution import (AlreadyResolved, ApprovalRequired, commit_case_resolution,
                                                   approvals_for, gated_facts, is_override, latest_approval, latest_resolution,
-                                                  proposed_action, record_approval)
+                                                  escalated_by, proposed_action, record_approval)
 from backend.app.services.filing import AlreadyFiled, FilingRefused, file_report
 from backend.app.services.kyc_devices import RecordNotFound
 from backend.app.timeline import CaseTimeline, build_timeline
@@ -50,8 +56,8 @@ DEMO_TITLES = {
 DEMO_ORDER = "ABDCEFGHT"
 MANUAL_RULE = "MANUAL-RUN"
 
-_runs: dict[str, CaseRun] = {}
 _db_lock = threading.Lock()
+_runs: RunStore | dict[str, CaseRun] = RunStore(_db_lock, lambda: settings.db_file)  # survives restarts
 _cache: JsonCache | None = None
 _guard: Guard | None = None
 _investigator: Investigator | None = None
@@ -96,7 +102,7 @@ def get_feed() -> FeedRunner:
 def _require_admin(x_admin_token: str | None) -> None:
     """Demo controls: absent when DEMO_MODE is off, and only for the holder of DEMO_ADMIN_TOKEN."""
     if settings.demo_mode == "off":
-        raise HTTPException(404, "Not Found")
+        raise HTTPException(404, "Demo controls are off (DEMO_MODE=off)")
     expected = settings.demo_admin_token
     if not expected or not x_admin_token or not hmac.compare_digest(x_admin_token.encode(), expected.encode()):
         raise HTTPException(403, "Admin token required")
@@ -138,7 +144,8 @@ class CaseDetail(BaseModel):
 
 class DecisionIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    decision: Literal["APPROVE", "REJECT", "MORE_INFO"]
+    decision: Literal["APPROVE", "REJECT", "MORE_INFO", "ESCALATE"] = Field(
+        description="ESCALATE hands the case to a compliance officer without committing anything")
     action: Action | None = Field(default=None, description="APPROVE only; defaults to the route's proposed action")
     reason: str = Field(min_length=3, max_length=500)
     actor: str = Field(default="officer.demo", min_length=1, max_length=60, pattern=r"^[A-Za-z0-9._-]+$")
@@ -152,7 +159,7 @@ class CommitIn(BaseModel):
 class DecisionOut(BaseModel):
     approval: Approval
     resolution: Resolution | None
-    status: Literal["COMMITTED", "REJECTED", "AWAITING_INFO"]
+    status: Literal["COMMITTED", "REJECTED", "AWAITING_INFO", "ESCALATED"]
     override: bool
 
 
@@ -187,6 +194,141 @@ def health() -> dict:
             "fault_armed": f.model_dump() if (f := _faults.state()) else None}
 
 
+@app.get("/audit", response_model=list[AuditEntry])
+def global_audit(alert_id: str | None = Query(None, pattern=r"^ALT-\d{5}$"), kind: str | None = Query(None, max_length=20),
+                 actor: str | None = Query(None, max_length=20), limit: int = Query(200, ge=1, le=1000),
+                 offset: int = Query(0, ge=0), conn=Depends(get_conn)):
+    """The whole audit log, newest first, optionally filtered. Read-only."""
+    q, args = "SELECT * FROM audit_log WHERE 1=1", []
+    for col, val in (("alert_id", alert_id), ("kind", kind), ("actor", actor)):
+        if val:
+            q, args = q + f" AND {col} = ?", [*args, val]
+    rows = conn.execute(q + " ORDER BY seq DESC LIMIT ? OFFSET ?", [*args, limit, offset]).fetchall()
+    return [AuditEntry(**{**dict(r), "payload": json.loads(r["payload"])}) for r in rows]
+
+
+@app.get("/audit/entries/{record_id}", response_model=AuditEntry)
+def audit_entry(record_id: str = Path(pattern=r"^AUD-\d{6}$"), conn=Depends(get_conn)):
+    row = conn.execute("SELECT * FROM audit_log WHERE record_id = ?", (record_id,)).fetchone()
+    if row is None:
+        raise HTTPException(404, f"Unknown audit record {record_id}")
+    return AuditEntry(**{**dict(row), "payload": json.loads(row["payload"])})
+
+
+@app.get("/audit/export")
+def audit_export(format: Literal["csv", "jsonl"] = "csv", since: str | None = Query(None, max_length=40),
+                 until: str | None = Query(None, max_length=40)):
+    """The audit log as a file (oldest first). Check it against GET /audit/verify."""
+    ensure_seeded()
+    conn = connect()
+    chain = audit.verify(conn)
+
+    def body():
+        try:
+            yield from exports.stream_audit(conn, format, since, until)
+        finally:
+            conn.close()
+    media = "text/csv" if format == "csv" else "application/x-ndjson"
+    return StreamingResponse(body(), media_type=media, headers={
+        "Content-Disposition": f'attachment; filename="momo-audit-{exports.stamp()}.{format}"',
+        "X-Audit-Head": chain.head_hash, "X-Audit-Chain-Ok": str(chain.ok).lower()})
+
+
+@app.get("/cases/search", response_model=CaseSearch)
+def case_search(q: str | None = Query(None, max_length=40), origin: str | None = Query(None, pattern=r"^[a-z,]{1,60}$"),
+                route: Route | None = None, status: records.Status | None = None,
+                since: str | None = Query(None, max_length=40), until: str | None = Query(None, max_length=40),
+                limit: int = Query(50, ge=1, le=500), offset: int = Query(0, ge=0), conn=Depends(get_conn)):
+    """Every case (demo, your own, feed, drill, seed data) with origin, route and status. Newest activity first."""
+    return records.search(conn, q, origin, route.value if route else None, status, since, until, limit, offset)
+
+
+@app.get("/storage", response_model=Storage)
+def storage_info(conn=Depends(get_conn)):
+    return records.storage(conn, settings.db_file)
+
+
+@app.get("/notifications", response_model=Notifications)
+def notifications(after: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=200), conn=Depends(get_conn)):
+    """Events worth a person's attention, derived from the append-only audit log (code-written titles only)."""
+    return records.notifications(conn, after, limit)
+
+
+def _case_pack(conn, alert_id: str) -> tuple[dict[str, bytes], CaseRecord | None]:
+    alert, txn = _load(conn, alert_id)
+    run_result = _runs.get(alert_id)
+    res = latest_resolution(conn, alert_id)
+    report = None
+    if run_result is not None:
+        report = build_report(conn, run_result, latest_approval(conn, alert_id), res, audit.latest_for(conn, alert_id),
+                              approvals_for(conn, alert_id))
+    rec = next((r for r in records.all_records(conn) if r.alert_id == alert_id), None)
+    summary = {**_summary(alert, txn).model_dump(mode="json"), **(rec.model_dump(mode="json") if rec else {})}
+    files = exports.case_files(conn, alert_id, summary, run_result, report,
+                               [a.model_dump(mode="json") for a in approvals_for(conn, alert_id)],
+                               res.model_dump(mode="json") if res else None)
+    return files, rec
+
+
+def _zip_response(data: bytes, name: str) -> Response:
+    return Response(data, media_type="application/zip",
+                    headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+@app.get("/cases/{alert_id}/export.zip")
+def case_export(alert_id: str = Path(pattern=r"^ALT-\d{5}$"), conn=Depends(get_conn)):
+    """Evidence pack: SAR draft (.md and printable .html), audit (.csv, .jsonl), timeline, case data, manifest."""
+    files, _ = _case_pack(conn, alert_id)
+    files["manifest.json"] = exports.manifest(files, conn, {"alert_id": alert_id})
+    return _zip_response(exports.zip_bytes(files), f"momo-{alert_id}-evidence-{exports.stamp()}.zip")
+
+
+class BulkExportIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    alert_ids: list[str] = Field(min_length=1, max_length=exports.MAX_BULK)
+
+
+@app.post("/exports/cases")
+def bulk_export(body: BulkExportIn, conn=Depends(get_conn)):
+    """One ZIP with a folder per case, an index.csv and a manifest over every file."""
+    bad = [a for a in body.alert_ids if not exports.ALERT_ID.match(a)]
+    if bad:
+        raise HTTPException(422, f"Not alert IDs: {', '.join(bad[:5])}")
+    ids = list(dict.fromkeys(body.alert_ids))
+    files: dict[str, bytes] = {}
+    rows = []
+    for alert_id in ids:
+        pack, rec = _case_pack(conn, alert_id)
+        files.update({f"{alert_id}/{name}": data for name, data in pack.items()})
+        if rec:
+            rows.append(rec.model_dump(mode="json"))
+    files["index.csv"] = exports.index_csv(rows)
+    files["manifest.json"] = exports.manifest(files, conn, {"alert_ids": ids})
+    return _zip_response(exports.zip_bytes(files), f"momo-cases-{len(ids)}-{exports.stamp()}.zip")
+
+
+@app.get("/cases/{alert_id}/report.md", response_class=PlainTextResponse)
+def report_markdown(alert_id: str = Path(pattern=r"^ALT-\d{5}$"), conn=Depends(get_conn)):
+    report = get_report(alert_id, conn)
+    return PlainTextResponse(report.markdown, media_type="text/markdown; charset=utf-8",
+                             headers={"Content-Disposition": f'attachment; filename="{alert_id}-sar-draft.md"'})
+
+
+@app.get("/cases/{alert_id}/report.html", response_class=HTMLResponse)
+def report_printable(alert_id: str = Path(pattern=r"^ALT-\d{5}$"), conn=Depends(get_conn)):
+    """Print-styled SAR draft: open it and use Print > Save as PDF."""
+    report = get_report(alert_id, conn)
+    head = audit.latest_for(conn, alert_id)
+    return HTMLResponse(exports.report_html(report, head.hash if head else None))
+
+
+@app.get("/cases/{alert_id}/audit.csv")
+def case_audit_csv(alert_id: str = Path(pattern=r"^ALT-\d{5}$"), conn=Depends(get_conn)):
+    _load(conn, alert_id)
+    return Response(exports.audit_csv(audit.entries_for(conn, alert_id)), media_type="text/csv",
+                    headers={"Content-Disposition": f'attachment; filename="{alert_id}-audit.csv"'})
+
+
 @app.get("/cases", response_model=list[CaseSummary])
 def list_cases(all: bool = False, conn=Depends(get_conn)):
     where = "" if all else "WHERE t.demo_tag IS NOT NULL"
@@ -203,7 +345,10 @@ def get_case(alert_id: str, conn=Depends(get_conn)):
     alert, txn = _load(conn, alert_id)
     res = conn.execute("SELECT * FROM resolutions WHERE alert_id = ? ORDER BY record_id DESC LIMIT 1",
                        (alert_id,)).fetchone()
-    return CaseDetail(summary=_summary(alert, txn), channel=txn["channel"], country=txn["country"], ts=txn["ts"],
+    summary = _summary(alert, txn)
+    if summary.last_route is None:  # decided before runs were stored: show the route code recorded
+        summary.last_route = recorded_route(conn, alert_id)
+    return CaseDetail(summary=summary, channel=txn["channel"], country=txn["country"], ts=txn["ts"],
                       raw_fields=free_text_fields(conn, txn), run=_runs.get(alert_id),
                       approval=latest_approval(conn, alert_id), decisions=approvals_for(conn, alert_id),
                       resolution=Resolution(**dict(res)) if res else None)
@@ -290,12 +435,12 @@ class IngestOut(BaseModel):
     run: CaseRun
 
 
-def _ingest_sync(body: IngestIn) -> IngestOut:
+def _ingest_sync(body: IngestIn, source: str = "api") -> IngestOut:
     ensure_seeded()
     conn = connect()
     try:
         with _db_lock:
-            alert_id, txn_id = store_ingested(conn, body)
+            alert_id, txn_id = store_ingested(conn, body, source=source)
             result = run_case(conn, alert_id, get_guard(), settings.aed_block_threshold, get_investigator())
         _runs[alert_id] = result
         return IngestOut(alert_id=alert_id, txn_id=txn_id, run=result)
@@ -304,7 +449,7 @@ def _ingest_sync(body: IngestIn) -> IngestOut:
 
 
 @app.post("/cases/ingest", response_model=IngestOut, status_code=201)
-async def ingest(request: Request):
+async def ingest(request: Request, source: Literal["api", "drill"] = Query("api")):
     """Run the full pipeline on an unseen transaction. Malformed input: 413/422, nothing stored."""
     declared = request.headers.get("content-length")
     if declared and declared.isdigit() and int(declared) > MAX_BODY_BYTES:
@@ -317,7 +462,7 @@ async def ingest(request: Request):
     except ValidationError as e:
         errors = [{"loc": list(err["loc"]), "msg": err["msg"], "type": err["type"]} for err in e.errors()]
         raise HTTPException(422, errors)
-    return await run_in_threadpool(_ingest_sync, body)
+    return await run_in_threadpool(_ingest_sync, body, source)
 
 
 @app.post("/cases/{alert_id}/decision", response_model=DecisionOut)
@@ -333,15 +478,30 @@ def decide_case(alert_id: str, body: DecisionIn, conn=Depends(get_conn)):
         raise HTTPException(409, "Case already resolved")
     action = (body.action or proposed_action(route)) if body.decision == "APPROVE" else None
     facts = gated_facts(conn, alert_id, settings.aed_block_threshold)
-    officer_only = route == Route.PENDING_APPROVAL or facts["high_value"] or facts["watchlist_hit"] \
-        or action == "HOLD_AND_BLOCK"
+    escalators = escalated_by(conn, alert_id)
+    gated = route == Route.PENDING_APPROVAL or facts["high_value"] or facts["watchlist_hit"] or bool(escalators)
+    if body.decision == "ESCALATE":
+        if gated:
+            raise HTTPException(409, "Case already needs a compliance officer; escalation adds nothing")
+        with _db_lock:
+            approval = record_approval(conn, alert_id, body.actor, "ESCALATE", body.reason, role=body.role)
+        return DecisionOut(approval=approval, resolution=None, status="ESCALATED", override=False)
+    officer_only = gated or action == "HOLD_AND_BLOCK"
     if officer_only and body.role != "COMPLIANCE_OFFICER":
         with _db_lock:
             audit.append(conn, alert_id, "DECISION_REFUSED", "HUMAN", {
                 "user": body.actor, "role": body.role, "decision": body.decision, "action": action,
                 "refusal": "OFFICER_REQUIRED"})
             conn.commit()
-        raise HTTPException(403, "High-value, watchlist and blocking decisions require a compliance officer")
+        raise HTTPException(403, "High-value, watchlist, escalated and blocking decisions require a compliance officer")
+    if body.decision in ("APPROVE", "REJECT") and body.actor.lower() in escalators:
+        with _db_lock:
+            audit.append(conn, alert_id, "DECISION_REFUSED", "HUMAN", {
+                "user": body.actor, "role": body.role, "decision": body.decision, "action": action,
+                "refusal": "SAME_PERSON"})
+            conn.commit()
+        raise HTTPException(403, "Four-eyes rule: the officer who decides must be a different person from the analyst "
+                                 "who escalated this case")
     override = is_override(route, body.decision, action)
     with _db_lock:
         try:
@@ -452,6 +612,15 @@ def file_case_report(alert_id: str, body: FileReportIn, conn=Depends(get_conn)):
                      approval_id=p["approval_id"], cited_record_ids=p["cited_record_ids"], audit_hash=entry.hash)
 
 
+@app.get("/cases/{alert_id}/lifecycle", response_model=Lifecycle)
+def case_lifecycle(alert_id: str = Path(pattern=r"^ALT-\d{5}$"), conn=Depends(get_conn)):
+    """Where the case stands (investigated, analyst review, officer approval, filed) and who may act next."""
+    _load(conn, alert_id)
+    run_result = _runs.get(alert_id)
+    route = run_result.decision.route if run_result else recorded_route(conn, alert_id)
+    return lifecycle(conn, alert_id, route, settings.aed_block_threshold, run_stored=run_result is not None)
+
+
 @app.get("/cases/{alert_id}/audit", response_model=list[AuditEntry])
 def case_audit(alert_id: str, conn=Depends(get_conn)):
     _load(conn, alert_id)
@@ -529,6 +698,13 @@ def feed_stop(x_admin_token: str | None = Header(None)):
 def feed_status():
     """Read-only aggregates and recent events: IDs, amounts, lanes and reason codes. No free text."""
     return get_feed().status(settings)
+
+
+@app.get("/demo/check")
+def demo_check(x_admin_token: str | None = Header(None)) -> dict:
+    """Validates the admin token for the console. Changes nothing."""
+    _require_admin(x_admin_token)
+    return {"ok": True}
 
 
 @app.post("/demo/fault", response_model=FaultArmed | None)

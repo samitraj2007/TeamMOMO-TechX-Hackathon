@@ -10,3 +10,4 @@ export * from "./SegmentedTabs";
 export * from "./States";
 export * from "./Surface";
 export * from "./Tags";
+export * from "./SegmentedPicks";

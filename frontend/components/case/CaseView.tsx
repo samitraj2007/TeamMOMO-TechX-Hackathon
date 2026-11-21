@@ -6,16 +6,18 @@ import {
   ActorTag, Button, Callout, EmptyState, ErrorState, Field, Hash, LoadingState, Panel, PropertiesTable,
   RefusedState, RouteTag, StatusTag, Tag, TextArea, Timestamp,
 } from "@/components/primitives";
-import { actorFor, useConsoleRole } from "@/components/shell/ConsoleFrame";
+import { useConsoleRole } from "@/components/shell/ConsoleFrame";
+import { useActorName } from "@/lib/actor";
 import { ApiError } from "@/lib/api";
 import { amount } from "@/lib/format";
 import { Markdown } from "@/lib/markdown";
-import { useCommit, useDecide, useFileReport, useReport } from "@/lib/queries";
+import { useCommit, useDecide, useFileReport, useLifecycle, useReport } from "@/lib/queries";
 import type { Action, Approval, CaseDetail, CaseRun, Route, Span } from "@/lib/types";
 import { Airlock } from "./Airlock";
 import { caseScreen } from "./CaseFrame";
 import { ProviderPath } from "./Resilience";
 import { GateLock } from "./GateLock";
+import { SignedInAs } from "./SignedInAs";
 import { PipelineTimeline } from "./PipelineTimeline";
 
 const INPUT_KEYS = new Set(["case_id", "memo_facts", "evidence", "policy"]);
@@ -241,11 +243,12 @@ function isOverride(route: Route, decision: Approval["decision"], action?: Actio
   return decision === "APPROVE" && action !== undefined && ACTION_RANK[action] < ACTION_RANK[proposed];
 }
 
-const DECISION_TONE = { APPROVE: "sage", REJECT: "red", MORE_INFO: "amber" } as const;
+const DECISION_TONE = { APPROVE: "sage", REJECT: "red", MORE_INFO: "amber", ESCALATE: "model" } as const;
 const STATUS_TEXT = {
   COMMITTED: "Approved and committed.",
   REJECTED: "Rejected. Nothing was committed, so the case stays open and the code route stands.",
   AWAITING_INFO: "More information requested. The case stays open.",
+  ESCALATED: "Escalated. A compliance officer must now approve or reject; nothing was committed.",
 } as const;
 
 function DecisionHistory({ decisions }: { decisions: Approval[] }) {
@@ -277,9 +280,36 @@ function DecisionHistory({ decisions }: { decisions: Approval[] }) {
   );
 }
 
+/** A decision button that stays visible when not allowed: disabled with the reason, plus a demo path that sends the
+ * request anyway so the backend refusal (and its audit entry) can be shown live. */
+function Act({ label, variant, allowed, blocked, ready, notReady, busy, onRun }: {
+  label: string; variant: "key" | "danger" | "outline" | "solid"; allowed: boolean; blocked: string | null;
+  ready: boolean; notReady: string; busy: boolean; onRun: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <Button variant={variant} disabled={busy || !allowed || !ready} title={!allowed ? blocked ?? undefined : !ready ? notReady : undefined}
+        onClick={onRun}>
+        {label}
+      </Button>
+      {!allowed && blocked && (
+        <span className="max-w-[260px] text-2xs text-muted">
+          {blocked}{" "}
+          <button type="button" disabled={busy || !ready} onClick={onRun}
+            className="underline underline-offset-4 hover:text-text disabled:opacity-50">Try anyway (demo)</button>
+        </span>
+      )}
+    </div>
+  );
+}
+
+const ACTION_WORD: Record<Action, string> = { CLEAR: "clear", ESCALATE: "escalate", HOLD_AND_BLOCK: "hold and block" };
+
 function DecisionRail({ id, detail }: { id: string; detail: CaseDetail }) {
   const { role } = useConsoleRole();
+  const actor = useActorName(role);
   const run = detail.run;
+  const lifecycle = useLifecycle(id).data;
   const decide = useDecide(id);
   const commit = useCommit(id);
   const file = useFileReport(id);
@@ -288,13 +318,23 @@ function DecisionRail({ id, detail }: { id: string; detail: CaseDetail }) {
   const [filing, setFiling] = useState<{ id: string; hash: string } | null>(null);
   const resolution = detail.resolution ?? run?.resolution ?? null;
   const decisions = detail.decisions ?? (detail.approval ? [detail.approval] : []);
-  const latest = decisions.at(-1) ?? null;
-  const approveAction: Action | undefined = run ? (run.decision.route === "PENDING_APPROVAL" ? "HOLD_AND_BLOCK" : "CLEAR") : undefined;
+  const latest = decisions.filter((d) => d.decision !== "ESCALATE").at(-1) ?? null;
+  const step = (sid: string) => lifecycle?.steps.find((s) => s.id === sid);
+  const analystStep = step("analyst_review");
+  const officerStep = step("officer_approval");
+  const filedStep = step("filed");
+  const escalated = (lifecycle?.escalated_by.length ?? 0) > 0;
+  const officerAction: Action | undefined = run
+    ? run.decision.route === "PENDING_APPROVAL" ? "HOLD_AND_BLOCK" : escalated ? "ESCALATE" : "CLEAR"
+    : undefined;
   const trimmed = reason.trim().length;
   const needs = (decision: Approval["decision"], action?: Action) =>
     run && isOverride(run.decision.route, decision, action) ? OVERRIDE_MIN_REASON : MIN_REASON;
-  const approveNeeds = needs("APPROVE", approveAction);
-  const rejectNeeds = needs("REJECT");
+  const sameAsEscalator = role === "COMPLIANCE_OFFICER" && !!lifecycle?.escalated_by.includes(actor.toLowerCase());
+  const officerBlocked = role !== "COMPLIANCE_OFFICER"
+    ? "Needs a compliance officer: switch role above."
+    : sameAsEscalator ? "Four-eyes: you escalated this case, so another officer must decide." : null;
+  const lengthHint = (n: number) => `Needs a reason of at least ${n} characters`;
 
   function onFail(e: unknown) {
     if (e instanceof ApiError && (e.status === 403 || e.status === 409 || e.status === 422)) setRefusal(e);
@@ -303,51 +343,76 @@ function DecisionRail({ id, detail }: { id: string; detail: CaseDetail }) {
   async function onDecide(decision: Approval["decision"], action?: Action) {
     setRefusal(null);
     try {
-      await decide.mutateAsync({ decision, action, reason: reason.trim(), role, actor: actorFor(role) });
+      await decide.mutateAsync({ decision, action, reason: reason.trim(), role, actor });
       setReason("");
     } catch (e) {
       onFail(e);
     }
   }
 
+  const reasonField = (
+    <Field label="Reason" htmlFor={`reason-${id}`}
+      hint={`${trimmed} characters. Clearing a case the code flagged, and rejecting, are overrides and need ${OVERRIDE_MIN_REASON}.`}>
+      <TextArea id={`reason-${id}`} value={reason} onChange={(e) => setReason(e.target.value)} />
+    </Field>
+  );
+
   return (
     <div className="grid items-start gap-4 lg:grid-cols-2 2xl:gap-5">
+      <SignedInAs lifecycle={lifecycle?.route ? lifecycle : null} />
       <DecisionSummary run={run} />
 
       {run && run.decision.route !== "AUTO_CLEAR" && (
-        <GateLock unlocked={resolution !== null} title={resolution ? `Committed · ${resolution.action}` : "Approval gate"}
-          detail={resolution ? `${resolution.record_id}${resolution.approval_id ? ` · ${resolution.approval_id}` : ""}` : `Signing as ${role === "COMPLIANCE_OFFICER" ? "compliance officer" : "analyst"}`}>
+        <GateLock unlocked={resolution !== null} title={resolution ? `Committed · ${resolution.action}` : officerStep?.state === "current" ? "Officer approval" : "Analyst review"}
+          detail={resolution ? `${resolution.record_id}${resolution.approval_id ? ` · ${resolution.approval_id}` : ""}` : `Signing as ${actor}`}>
           {resolution ? (
             latest && <p className="text-sm text-muted">Committed on {latest.record_id} by {latest.actor}. Later decisions are refused.</p>
           ) : (
-            <div className="flex flex-col gap-2">
-              <Button size="sm" variant="ghost" onClick={() => {
+            <div className="flex flex-col gap-3">
+              {latest && latest.decision !== "APPROVE" && (
+                <Callout kind="note" title={latest.decision === "REJECT" ? "Rejected, still open" : "Waiting for information"}>
+                  {latest.actor} recorded {latest.decision} on {latest.record_id}. Nothing was committed, so the case can still be decided.
+                </Callout>
+              )}
+              {reasonField}
+
+              {analystStep?.state === "current" && (
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs text-muted">Analyst review: clear the case yourself, or hand it to a compliance officer.</span>
+                  <div className="flex flex-wrap gap-2">
+                    <Act label="Clear case" variant="key" allowed blocked={null} busy={decide.isPending}
+                      ready={trimmed >= needs("APPROVE", "CLEAR")} notReady={lengthHint(needs("APPROVE", "CLEAR"))}
+                      onRun={() => void onDecide("APPROVE", "CLEAR")} />
+                    <Act label="Escalate to compliance officer" variant="solid" allowed blocked={null} busy={decide.isPending}
+                      ready={trimmed >= MIN_REASON} notReady={lengthHint(MIN_REASON)}
+                      onRun={() => void onDecide("ESCALATE")} />
+                  </div>
+                </div>
+              )}
+
+              {officerStep?.state === "current" && officerAction && (
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs text-muted">
+                    Officer approval: approve the action ({ACTION_WORD[officerAction]}) or reject it.
+                    {escalated && ` Escalated by ${lifecycle?.escalated_by.join(", ")}.`}
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    <Act label={`Approve action (${ACTION_WORD[officerAction]})`} variant="key" allowed={!officerBlocked} blocked={officerBlocked}
+                      busy={decide.isPending} ready={trimmed >= needs("APPROVE", officerAction)} notReady={lengthHint(needs("APPROVE", officerAction))}
+                      onRun={() => void onDecide("APPROVE", officerAction)} />
+                    <Act label="Reject" variant="danger" allowed={!officerBlocked} blocked={officerBlocked}
+                      busy={decide.isPending} ready={trimmed >= needs("REJECT")} notReady={lengthHint(needs("REJECT"))}
+                      onRun={() => void onDecide("REJECT")} />
+                  </div>
+                </div>
+              )}
+
+              <Button size="sm" variant="ghost" className="w-fit" onClick={() => {
                 setRefusal(null);
                 void commit.mutateAsync(run.decision.route === "PENDING_APPROVAL" ? "HOLD_AND_BLOCK" : "CLEAR").catch(onFail);
               }}>
-                {run.decision.route === "PENDING_APPROVAL" ? "Commit block without approval" : "Try to release without approval"}
+                {run.decision.route === "PENDING_APPROVAL" ? "Commit block without approval (demo)" : "Release without a decision (demo)"}
               </Button>
-              {latest && latest.decision !== "APPROVE" && (
-                <Callout kind="note" title={latest.decision === "REJECT" ? "Rejected, still open" : "Waiting for information"}>
-                  {latest.actor} recorded {latest.decision} on {latest.record_id}. Nothing was committed, so the case can still be approved or rejected.
-                </Callout>
-              )}
-              <Field label="Reason" htmlFor={`reason-${id}`}
-                hint={`${trimmed} characters. Reject${approveNeeds === OVERRIDE_MIN_REASON ? " and Approve (release)" : ""} count as overrides and need ${OVERRIDE_MIN_REASON}.`}>
-                <TextArea id={`reason-${id}`} value={reason} onChange={(e) => setReason(e.target.value)} />
-              </Field>
-              <div className="flex gap-2">
-                <Button variant="key" disabled={decide.isPending || trimmed < approveNeeds}
-                  title={trimmed < approveNeeds ? `Needs a reason of at least ${approveNeeds} characters` : undefined}
-                  onClick={() => void onDecide("APPROVE", approveAction)}>
-                  Approve
-                </Button>
-                <Button variant="danger" disabled={decide.isPending || trimmed < rejectNeeds}
-                  title={trimmed < rejectNeeds ? `Reject is an override: it needs at least ${rejectNeeds} characters` : undefined}
-                  onClick={() => void onDecide("REJECT")}>
-                  Reject
-                </Button>
-              </div>
               {decide.data && !refusal && (
                 <p role="status" className="text-xs text-muted">
                   {decide.data.approval.record_id}: {STATUS_TEXT[decide.data.status]}
@@ -360,20 +425,38 @@ function DecisionRail({ id, detail }: { id: string; detail: CaseDetail }) {
       )}
 
       {run?.decision.route === "AUTO_CLEAR" && (
-        <Callout kind="note" title="Auto-cleared">Code committed this case. No officer action is required.</Callout>
+        <Callout kind="note" title="Auto-cleared">Code committed this case. No analyst or officer action is required.</Callout>
       )}
 
-      {run && <DecisionHistory decisions={decisions} />}
+      {!run && (resolution || decisions.length > 0) && (
+        <Callout kind="note" title="Decided before runs were stored">
+          {resolution ? `Committed ${resolution.action} on ${resolution.record_id}. ` : `${decisions.length} decision(s) on record, not committed. `}
+          The investigation snapshot from that run was not kept, so run again to rebuild the report and evidence pack.
+          The decisions below and the audit log are unchanged.
+        </Callout>
+      )}
 
-      <Panel title="Filing" tint="surface" className="surface-key rounded-panel">
-        {!run ? <span className="text-sm text-muted">Filing opens after a run.</span> : (
+      {(run || decisions.length > 0) && <DecisionHistory decisions={decisions} />}
+
+      <Panel title="Regulatory report" tint="surface" className="surface-key rounded-panel">
+        {!run ? <span className="text-sm text-muted">Opens after a run.</span> : (
           <div className="flex flex-col gap-2">
-            <Button size="sm" variant="key" disabled={file.isPending} onClick={() => {
-              setRefusal(null);
-              void file.mutateAsync({ actor: actorFor(role), role }).then((f) => setFiling({ id: f.filing_id, hash: f.report_sha256 })).catch(() => undefined);
-            }}>
-              File report
-            </Button>
+            <p className="text-xs text-muted">
+              Submitting sends the SAR to the regulator (simulated). Code allows it only after a compliance officer
+              approval, and only for an officer; the report hash goes into the audit log.
+            </p>
+            {filedStep?.state === "done" ? (
+              <p className="text-sm text-text">Filed by {filedStep.by}{filedStep.record_id ? ` as ${filedStep.record_id}` : ""}.</p>
+            ) : (
+              <Act label="Submit report to regulator (simulated)" variant="key"
+                allowed={filedStep?.state === "current" && role === "COMPLIANCE_OFFICER"}
+                blocked={filedStep?.state !== "current" ? (filedStep?.note ?? "Needs a compliance officer approval first.") : "Needs a compliance officer: switch role above."}
+                ready busy={file.isPending} notReady=""
+                onRun={() => {
+                  setRefusal(null);
+                  void file.mutateAsync({ actor, role }).then((f) => setFiling({ id: f.filing_id, hash: f.report_sha256 })).catch(() => undefined);
+                }} />
+            )}
             {filing && (
               <p className="flex flex-col gap-1 text-xs text-muted">
                 <span>Filed as <span className="num text-text">{filing.id}</span></span>

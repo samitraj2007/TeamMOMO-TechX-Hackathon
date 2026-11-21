@@ -32,7 +32,7 @@ function statusLine(s: number, h: Health | undefined): { text: string; tone: Ton
     return { text: `Main and backup models both passed their ${limit} s limit · failing closed to human review · ${secs}`, tone: "amber" };
   }
   if (h?.backup_model) {
-    return { text: `Main model passed its ${limit} s limit · trying backup ${h.backup_name ?? ""} (${h.backup_model}) · ${secs}`, tone: "amber" };
+    return { text: `Main model passed its ${limit} s limit · trying the backup (${h.backup_model}) · ${secs}`, tone: "amber" };
   }
   return { text: `Main model passed its ${limit} s limit · no backup configured · failing closed to human review · ${secs}`, tone: "amber" };
 }
@@ -83,7 +83,7 @@ export function ProviderPath({ run }: { run: CaseRun }) {
         {failed
           ? "No model answered, so code failed closed: the case went to human review and nothing was auto-cleared."
           : viaBackup
-            ? `The main model failed; the backup ${inv.provider} answered and its findings went through the same citation verifier.`
+            ? `The main model failed; the backup provider${inv.provider === "backup" ? "" : ` (${inv.provider})`} answered, and its findings went through the same citation verifier.`
             : inv.cached ? "Replayed from the cache; no provider call." : "Answered by the main model."}
       </p>
     </div>

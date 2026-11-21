@@ -267,3 +267,44 @@ def test_live_traffic_is_never_scored(conn):
                  "'{\"step\": \"policy\", \"route\": \"AUTO_CLEAR\"}', hash, hash FROM audit_log "
                  "ORDER BY seq DESC LIMIT 1", (alert,))
     assert scorecard(conn, 10_000.0).model_dump() == before
+
+
+# ---- finer control: short runs and a traffic mix ----
+
+def test_short_runs_and_mix_validation(client):
+    c = client()
+    assert start(c, duration_s=9).status_code == 422
+    for bad in ({"benign": 0}, {"benign": -1}, {"benign": 101}, {"phishing": 50}):
+        assert start(c, mix=bad).status_code == 422, bad
+    r = start(c, total=5, duration_s=10, mix={"benign": 1, "hostile_memo": 3})
+    assert r.status_code == 200 and r.json()["config"]["mix"] == {"benign": 1, "hostile_memo": 3}
+
+
+def test_mix_controls_which_kinds_are_generated(conn, tmp_path):
+    gen = BankFeedGenerator(settings(tmp_path), load_roster(conn), seed=3, mix={"benign": 100})
+    assert {gen._pick_seed().kind for _ in range(200)} == {"benign"}
+    hostile = BankFeedGenerator(settings(tmp_path), load_roster(conn), seed=3, mix={"hostile_memo": 100})
+    assert {hostile._pick_seed().kind for _ in range(200)} == {"hostile_memo"}
+    with pytest.raises(ValueError):
+        BankFeedGenerator(settings(tmp_path), load_roster(conn), mix={"benign": 0})
+
+
+def test_attack_wave_screens_every_hostile_alert_to_review(runner_env):
+    env = runner_env
+    cfg = FeedConfig.model_construct(total=15, duration_s=0.2, ai_per_min=0, mix={"hostile_memo": 100})
+    env.runner.start(cfg, env.settings)
+    env.runner.wait(30)
+    st = env.runner.status(env.settings)
+    assert st.received == 15 and st.lanes["ai"] == 0
+    assert all("INJECTION_SIGNAL" in e.reasons for e in st.events)
+
+
+def test_finished_and_stopped_runs_are_kept_in_history(runner_env):
+    env = runner_env
+    env.runner.start(fast(5, ai_per_min=0), env.settings)
+    env.runner.wait(30)
+    env.runner.start(fast(200, ai_per_min=0, duration_s=60), env.settings)
+    env.runner.stop()
+    h = env.runner.status(env.settings).history
+    assert [x.state for x in h] == ["stopped", "finished"]
+    assert h[1].received == 5 and h[1].config.total == 5 and sum(h[1].lanes.values()) == 5

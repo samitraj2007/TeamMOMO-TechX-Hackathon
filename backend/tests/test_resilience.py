@@ -232,3 +232,18 @@ def test_script_http_helper_reports_real_errors(monkeypatch):
     monkeypatch.setattr(live_ingest.urllib.request, "urlopen", raise_(TimeoutError()))
     with pytest.raises(live_ingest.EventError, match="no answer within"):
         live_ingest.post("http://x", "/p", {}, timeout=5)
+
+
+def test_demo_check_and_clear_demo_off_message(client):
+    off = client(mode="off").get("/demo/check")
+    assert off.status_code == 404 and "DEMO_MODE=off" in off.json()["detail"]
+    c = client()
+    assert c.get("/demo/check").status_code == 403
+    assert c.get("/demo/check", headers={"X-Admin-Token": "nope"}).status_code == 403
+    assert c.get("/demo/check", headers={"X-Admin-Token": TOKEN}).json() == {"ok": True}
+
+
+def test_slow_drill_cannot_become_a_timeout(client):
+    c, h = client(), {"X-Admin-Token": TOKEN}
+    assert c.post("/demo/fault", json={"mode": "slow", "delay_s": 12}, headers=h).status_code == 422
+    assert c.post("/demo/fault", json={"mode": "slow", "delay_s": 8}, headers=h).status_code == 200

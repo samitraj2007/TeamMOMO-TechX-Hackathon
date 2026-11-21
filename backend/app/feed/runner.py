@@ -18,10 +18,10 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from backend.app.config import Settings
-from backend.app.feed.generator import BankFeedGenerator, load_roster, sim_llm_enabled
+from backend.app.feed.generator import BankFeedGenerator, Kind, load_roster, sim_llm_enabled
 from backend.app.feed.screen import Lane, screen_case
 from backend.app.ingest import store
 from backend.app.pipeline import CaseRun, run_case
@@ -30,6 +30,7 @@ from backend.app.schemas import Route
 FEED_SOURCE = "bank-feed-sim"
 REFRESH_EVERY_S = 45.0
 EVENTS_KEPT = 200
+HISTORY_KEPT = 5
 
 State = Literal["idle", "running", "draining", "finished", "stopped"]
 
@@ -37,8 +38,20 @@ State = Literal["idle", "running", "draining", "finished", "stopped"]
 class FeedConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     total: int = Field(ge=1, description="Alerts to stream; capped by FEED_MAX_TOTAL")
-    duration_s: int = Field(default=240, ge=30, le=600)
+    duration_s: int = Field(default=240, ge=10, le=600)
     ai_per_min: float = Field(default=4.0, ge=0, le=30)
+    mix: dict[Kind, int] | None = Field(default=None, description="Weight 0-100 per alert kind; default: a normal day")
+
+    @field_validator("mix")
+    @classmethod
+    def _mix(cls, v: dict[str, int] | None) -> dict[str, int] | None:
+        if v is None:
+            return v
+        if any(w < 0 or w > 100 for w in v.values()):
+            raise ValueError("each mix weight must be 0 to 100")
+        if sum(v.values()) <= 0:
+            raise ValueError("the mix needs at least one kind with a positive weight")
+        return v
 
 
 class FeedEvent(BaseModel):
@@ -52,6 +65,17 @@ class FeedEvent(BaseModel):
                                             "AI lane has run; null while queued")
     reasons: list[str]
     ai_status: Literal["queued", "done", "failed"] | None = None
+
+
+class FeedRunSummary(BaseModel):
+    started_at: str
+    state: State
+    config: FeedConfig
+    received: int
+    elapsed_s: float
+    lanes: dict[str, int]
+    ai_done: dict[str, int]
+    ai_left_queued: int
 
 
 class FeedStatus(BaseModel):
@@ -73,6 +97,7 @@ class FeedStatus(BaseModel):
     sim_max_calls: int
     sim_failures: int
     events: list[FeedEvent]
+    history: list[FeedRunSummary] = Field(default=[], description="Last finished or stopped runs, newest first")
 
 
 class FeedBusy(RuntimeError):
@@ -89,6 +114,7 @@ class FeedRunner:
         self._state_lock = threading.Lock()
         self._stop = threading.Event()
         self._threads: list[threading.Thread] = []
+        self.history: deque[FeedRunSummary] = deque(maxlen=HISTORY_KEPT)
         self._reset_state(None, None)
 
     def _reset_state(self, cfg: FeedConfig | None, settings: Settings | None) -> None:
@@ -120,7 +146,7 @@ class FeedRunner:
                 roster = load_roster(conn)
             finally:
                 conn.close()
-            self.generator = BankFeedGenerator(settings, roster, seed=int(time.time()))
+            self.generator = BankFeedGenerator(settings, roster, seed=int(time.time()), mix=cfg.mix)
             self.state, self._stop = "running", threading.Event()
             self.started_at = datetime.now(timezone.utc).isoformat()
             self._t0 = self._clock()
@@ -136,8 +162,7 @@ class FeedRunner:
         self._join()
         with self._state_lock:
             if self.state in ("running", "draining"):
-                self.state = "stopped"
-                self._t_end = self._clock()
+                self._close("stopped")
 
     def wait(self, timeout: float | None = None) -> None:
         for t in list(self._threads):
@@ -187,11 +212,11 @@ class FeedRunner:
                 self._t_ingest_end = self._clock()
                 if self.state == "running":
                     if self._stop.is_set():
-                        self.state, self._t_end = "stopped", self._clock()
+                        self._close("stopped")
                     elif self.queue and self.cfg.ai_per_min > 0:
                         self.state = "draining"
                     else:
-                        self.state, self._t_end = "finished", self._clock()
+                        self._close("finished")
 
     def _ai_loop(self) -> None:
         period = 60.0 / self.cfg.ai_per_min
@@ -204,7 +229,7 @@ class FeedRunner:
                 if finished:
                     with self._state_lock:
                         if self.state == "draining":
-                            self.state, self._t_end = "finished", self._clock()
+                            self._close("finished")
                     return
                 if alert_id is None:
                     if self._stop.wait(0.5):
@@ -236,6 +261,15 @@ class FeedRunner:
                 ev.reasons = [r.code for r in result.decision.reasons if r.route != Route.AUTO_CLEAR] \
                     or [r.code for r in result.decision.reasons]
 
+    def _close(self, state: State) -> None:
+        """Terminal state plus a history entry. Caller holds _state_lock."""
+        self.state, self._t_end = state, self._clock()
+        if self.cfg is not None and self.started_at is not None:
+            self.history.appendleft(FeedRunSummary(
+                started_at=self.started_at, state=state, config=self.cfg, received=self.received,
+                elapsed_s=round(self._t_end - self._t0, 1), lanes=dict(self.lanes), ai_done=dict(self.ai_done),
+                ai_left_queued=len(self.queue)))
+
     def _event(self, ev: FeedEvent) -> None:
         self.events[ev.alert_id] = ev
         while len(self.events) > EVENTS_KEPT:
@@ -260,4 +294,5 @@ class FeedRunner:
                 sim_llm_enabled=gen.llm_enabled if gen else sim_llm_enabled(settings),
                 sim_calls=gen.calls if gen else 0, sim_max_calls=settings.sim_llm_max_calls,
                 sim_failures=gen.failures if gen else 0,
-                events=[e.model_copy() for e in reversed(self.events.values())])
+                events=[e.model_copy() for e in reversed(self.events.values())],
+                history=[h.model_copy() for h in self.history])

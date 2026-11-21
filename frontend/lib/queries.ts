@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "./api";
+import { ApiError, api } from "./api";
 import type { Action, Approval, IngestIn, Role } from "./types";
 
 export const keys = {
@@ -12,6 +12,7 @@ export const keys = {
   timeline: (id: string) => ["case", id, "timeline"] as const,
   report: (id: string) => ["case", id, "report"] as const,
   caseAudit: (id: string) => ["case", id, "audit"] as const,
+  lifecycle: (id: string) => ["case", id, "lifecycle"] as const,
   record: (id: string) => ["record", id] as const,
   transactions: ["transactions"] as const,
   feed: ["feed"] as const,
@@ -49,6 +50,8 @@ function useInvalidateCase() {
     void qc.invalidateQueries({ queryKey: ["cases"] });
     void qc.invalidateQueries({ queryKey: keys.verify });
     void qc.invalidateQueries({ queryKey: keys.transactions });
+    void qc.invalidateQueries({ queryKey: ["notifications"] });
+    void qc.invalidateQueries({ queryKey: ["audit"] });
   };
 }
 
@@ -91,3 +94,18 @@ export function useIngest() {
   const invalidate = useInvalidateCase();
   return useMutation({ mutationFn: (body: IngestIn) => api.ingest(body), onSettled: (r) => r && invalidate(r.alert_id) });
 }
+
+/** Where the case stands and who may act next (GET /cases/{id}/lifecycle). Null on older backends (404). */
+export const useLifecycle = (id: string) =>
+  useQuery({
+    queryKey: keys.lifecycle(id),
+    queryFn: async () => {
+      try {
+        return await api.lifecycle(id);
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 404) return null;
+        throw e;
+      }
+    },
+    enabled: !!id,
+  });
